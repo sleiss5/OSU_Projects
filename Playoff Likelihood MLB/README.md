@@ -18,4 +18,4 @@ This project analyzes the likelihood of a professional baseball team making the 
 ### Project Work 
 
 * The R code used for the analysis for this project can be found below:
-* [Report R Work](Shannon Leiss - Final Project.R)
+* [Report R Work]([Shannon Leiss - Final Project.R](https://github.com/sleiss5/OSU_Projects/blob/main/Playoff%20Likelihood%20MLB/Shannon%20Leiss%20-%20Final%20Project.R))
