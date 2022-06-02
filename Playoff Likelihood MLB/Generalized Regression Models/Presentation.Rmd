@@ -1,0 +1,353 @@
+---
+title: 'Major League Baseball Playoff Appearance Likelihood'
+author: "Shannon Leiss"
+date: "12/7/2021"
+output: beamer_presentation
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library(tidyverse)
+library(Lahman)
+library(patchwork)
+library(ggpubr)
+```
+
+## Introduction
+
+Many different attempts have been made to optimize an equation for predicting a team's probability of making the playoffs in all sports. 
+
+`Teams` dataset in the `Lahman` package provides team records for the 1871 - 2020 baseball season, along with offensive statistics, defensive statistics, and if the team made the playoffs. 
+
+Using this data for the seasons of 1998 - 2019, offensive statistics will be used to model the likelihood of a team making the playoffs. 
+
+Based off the best models, the offensive statistics needed to have a 50% and 90% chance of making the playoffs will be found.
+
+Using the same offensive data, it will be compared which league - American or National - hits more home runs and which franchises historically hit the most home runs per season.
+
+
+## Offensive Statistics Being Considered 
+
+The offensive statistics used initial were:
+
+  - Runs Scored
+  
+  - Hits
+
+  - At Bats
+
+  - Doubles
+
+  - Triples
+
+  - Homeruns 
+
+Addition variable that were calculated for use in a separate model were:
+
+  - Run Average: Runs Scored divided by At Bats
+
+  - Batting Average: Hits divided by At Bats
+
+## Data Used:
+
+```{r, echo=F}
+Season_by_Team <- Teams
+Season_by_Team <- Season_by_Team%>%subset(yearID >= 1998)
+Season_by_Team <- Season_by_Team %>% mutate(Playoffs = ifelse(DivWin == "Y" | WCWin == "Y",1,0),WS_Appearance = ifelse(LgWin == "Y",1,0),WS_Champ = ifelse(WSWin == "Y",1,0) )
+Season_Offensive <- Season_by_Team[Season_by_Team$yearID != 2020,c(1,2,4,5,15:21,26,44,49:51)] 
+rownames(Season_Offensive) <- NULL
+Season_Offensive <- Season_Offensive%>% mutate(RperAB = round(R/AB,4), HperAB = round(H/AB,4))
+New <- t(Season_Offensive[,c(5,6,7,8,9,10,17,18,14)])
+colnames(New) <- Season_Offensive$franchID
+knitr::kable((New[,1:5]))
+```
+
+
+## Initial Logistic Model 
+
+Since the response variable of `Playoff` is a indicator of whether or not a team made the playoffs, logistic regression can be used to model the log-odds of a team making the playoffs. The initial logistic model that was fitted:
+
+$$\begin{aligned}
+log(\frac{p_i}{1-p_i}) =  25.306 &+ 0.0178(R_i) - 0.0068(AB_i)- 0.00015(H_i)\\
+&- 0.0035(X2B_i) - 0.0112(X3B_i) - 0.003(HR_i)
+\end{aligned}$$
+Where $p_i$ is the probability that a team made the playoffs.
+
+This model had an AIC of 673.9, a residual deviance of 659.9 on 653 degrees of freedom, with no evidence of over dispersion.
+
+A model with all possible interactions was also fitted and was found to be worse than the initial model with no interactions.
+
+## Reduced Models
+
+From the initial model, only the intercept, Runs Scored, and At Bats were significant. The reduced models that were fit:
+
+$$\begin{aligned}
+log(\frac{p_i}{1-p_i}) &=  26.2955 + 0.0162(R_i) - 0.0071(AB_i)\\
+log(\frac{p_i}{1-p_i}) &=  -115.292 + 0.1980(R_i) \\
+&\quad - 0.01837(AB_i) - 0.00003(R_i*AB_i)
+\end{aligned}$$
+
+The AIC value for the model without interactions was 667.51 and the model with interactions had an AIC of 664.75.
+
+## Comparing Initial and Reduced Models 
+
+Using drop in deviance tests with likelihood ratios(no over dispersion), the difference in deviance(T) was compared to a $\chi^2_d$ distribution, where d is the difference in terms between models.
+
+Comparing the initial model to the reduced model without interactions:
+
+  - T = 1.6161 with a p-value = 0.8059
+  
+  - **Reduced Model** should be used 
+
+Comparing the reduced model with interactions to the model without interactions:
+
+  - T = 4.763 with a p-value = 0.02908
+  
+  - **Model with Interactions** should be used
+
+
+## Logistic Model using Mutated Offensive Statistics
+
+Using the created variables of Run Average and Batting Average per team, the following logistic model with interaction was fit:
+
+$$\begin{aligned}
+log(\frac{p_i}{1-p_i}) =  -41.92 &+ 330.99(RperAB_i) + 110.21(HperAB_i)\\
+&- 922.93(RperAB_i*HperAB_i)
+\end{aligned}$$
+
+This model had an AIC of 674.71 and a residual deviance of 666.71 on 656 degrees of freedom.
+
+Reduced Model without interaction:
+$$
+log(\frac{p_i}{1-p_i}) =  -7.808 + 87.704(RperAB_i) -19.536(HperAB_i)
+$$
+
+With an AIC of 675.32 and a residual deviance of 669.32 on 657 degrees of freedom.
+
+
+## Initial vs Reduced Model
+
+Using drop in deviance test between above models:
+
+   - T = 2.6124, with p-value = 0.106
+   
+   - **Model without Interaction** should be used
+
+
+## Optimal Models
+
+Using Offensive statistics:
+
+$$\begin{aligned}
+(1) \qquad log(\frac{p_i}{1-p_i}) &=  -115.292 + 0.1980(R_i) \\
+&\quad - 0.01837(AB_i) - 0.00003(R_i*AB_i)
+\end{aligned}$$
+
+Using Mutated Offensive statistics:
+
+$$
+(2) \qquad log(\frac{p_i}{1-p_i}) =  -7.808 + 87.704(RperAB_i) -19.536(HperAB_i)
+$$
+
+## Different Link Functions on Models 
+
+Using the two "best" models, different link functions were tried and compared:
+$$\begin{aligned}
+\mbox{Probit: }& \Phi^{-1}(p_i) = \alpha + \beta_ix_{ij}\\
+\mbox{C-Log-Log: }& log(-log(1-p_i)) = \alpha + \beta_ix_{ij}
+\end{aligned}$$
+
+Comparing the AIC values for both models using all three links:
+```{r,echo=F}
+mod1 <- glm(Playoffs ~ R+AB+R*AB,data=Season_Offensive,family=binomial)
+mod2 <- glm(Playoffs ~RperAB + HperAB,data=Season_Offensive,family=binomial)
+mod1.1 <- glm(Playoffs ~ R+AB+R*AB,data=Season_Offensive,family=binomial(link="probit"))
+mod1.1.reduced <- glm(Playoffs ~ R+AB,data=Season_Offensive,family=binomial(link="probit"))
+mod2.1 <- glm(Playoffs ~RperAB + HperAB,data=Season_Offensive,family=binomial(link="probit"))
+mod2.1.2<- glm(Playoffs ~RperAB + HperAB+RperAB*HperAB,data=Season_Offensive,family=binomial(link="probit"))
+mod1.2 <- glm(Playoffs ~ R+AB+R*AB,data=Season_Offensive,family=binomial(link="cloglog"))
+mod1.2.red <- glm(Playoffs ~ R+AB,data=Season_Offensive, family = binomial(link="cloglog"))
+mod2.2 <- glm(Playoffs ~RperAB + HperAB,data=Season_Offensive,family=binomial(link="cloglog"))
+mod2.2.more <- glm(Playoffs ~RperAB + HperAB+RperAB*HperAB,data=Season_Offensive,family=binomial(link="cloglog"))
+
+AIC.mod1 <- data.frame(mod1$aic, mod1.1$aic, mod1.2$aic)
+AIC.mod2 <- data.frame(mod2$aic, mod2.1$aic, mod2.2.more$aic)
+colnames(AIC.mod1) <- c("Logistic", "Probit", "C-Log-Log")
+colnames(AIC.mod2) <- c("Logistic", "Probit", "C-Log-Log")
+knitr::kable(rbind(AIC.mod1,AIC.mod2))
+```
+
+## Notes on Model Assumptions
+
+All offensive data for a team in a given season were assumed independent.
+
+Also assumed that each teams performance was independent of other teams performance and a given teams performance season to season was also independent.
+
+The response variable of `Playoff` also has dependent observations.
+
+
+## Model Checking - Residuals
+
+```{r,echo=F}
+mod1 <- glm(Playoffs ~ R+AB+R*AB,data=Season_Offensive,family=binomial)
+mod2 <- glm(Playoffs ~RperAB + HperAB,data=Season_Offensive,family=binomial)
+rd.mod1 <- resid(mod1,"deviance")
+rd.mod2 <- resid(mod2,"deviance")
+df <- data.frame(Fit = mod1$fitted.values, Residuals =rd.mod1,Season = Season_by_Team[Season_by_Team$yearID != 2020,1])
+p1 <- ggplot(df, aes(x=Fit,y=Residuals,col=as.factor(Season)))+
+  geom_point(alpha=0.5)+
+  ggtitle("Model 1")+
+  labs(col="Season")+
+  theme(legend.position = "none")
+df2 <- data.frame(Fit = mod2$fitted.values, Residuals =rd.mod2,Season = Season_by_Team[Season_by_Team$yearID != 2020,1])
+p2 <- ggplot(df2, aes(x=Fit,y=Residuals,col=as.factor(Season)))+
+  geom_point(alpha=0.5)+
+  ggtitle("Model 2")+
+  labs(col="Season")
+ggarrange(p1,p2,ncol=1,common.legend = TRUE,legend = "right")
+```
+
+
+## Applying Models to Data
+
+The probability of a team making the playoffs, using both models, is:
+$$\begin{aligned}
+(1) \qquad p_i &=  \frac{e^{-115.292 + 0.1980(R_i) - 0.01837(AB_i) - 0.00003(R_i*AB_i)}}{1+e^{-115.292 + 0.1980(R_i) - 0.01837(AB_i) - 0.00003(R_i*AB_i)}}\\
+(2) \qquad p_i &= \frac{e^{-7.808 + 87.704(RperAB_i) -19.536(HperAB_i)}}{1+e^{-7.808 + 87.704(RperAB_i) -19.536(HperAB_i)}}
+\end{aligned}$$
+
+Using these formulas on the 2019 season:
+```{r,echo=F}
+Offensive_2019 <- Season_by_Team %>% subset(yearID == 2019)%>% mutate(RperAB = R/AB, HperAB = H/AB)
+Offensive_2019<- Offensive_2019[,c(15,16,52,53)]
+mod1.coefs <- mod1$coefficients
+new.data <- data.frame(Inter = rep(1,30), Offensive_2019$R, Offensive_2019$AB, Offensive_2019$R*Offensive_2019$AB)
+log_odds <- as.matrix(new.data) %*% t(t(mod1.coefs))
+odds <- exp(log_odds)
+probs <- odds/(1+odds)
+mod2.coefs <- mod2$coefficients
+new.data.2 <- data.frame(Inter = rep(1,30), Offensive_2019$RperAB, Offensive_2019$HperAB)
+log_odds_2 <- as.matrix(new.data.2) %*%t(t(mod2.coefs))
+odds_2 <- exp(log_odds_2)
+probs_2 <- odds_2/(1+odds_2)
+team_probs_predicted <- data.frame(Team = Season_by_Team[Season_by_Team$yearID == 2019,4], Playoff_Prob_mod_1 = round(probs,4),Playoff_Prob_mod_2 = round(probs_2,4))
+colnames(team_probs_predicted) <- c("Team", "Model 1 Probability", "Model 2 Probability")
+rownames(team_probs_predicted) <- Season_by_Team[Season_by_Team$yearID == 2019,4]
+Team_probs <- t(team_probs_predicted)
+knitr::kable(Team_probs[2:3,1:5])
+```
+
+
+
+## Chance of Making Playoffs 
+
+For a team with an average team batting average(0.2603):
+
+  - A Run Average of .147 achieves 50% chance of going to playoffs
+  
+  - A Run Average of .172 achieves 90% chance of going to playoffs 
+
+For a team with an average team Run Average(0.1345):
+
+  - A Batting Average of .204 achieves a 50% chance of going to playoffs
+  
+  - A Batting Average of 0.3166 achieve a 90% chance of going to playoffs 
+  
+For a team with an average number of At Bats(5542.671):
+
+  - Scoring 806.4 Runs achieves a 50% chance of going to playoffs
+  
+  - Scoring 937.7 Runs achieves a 90% chance of going to playoffs
+
+
+
+## Home Run Rates
+
+Using Poisson regression to see which league, which division, and which team has the highest homerun rates.
+
+All models had evidence of over dispersion - with an over dispersion estimate around 7.5 for all models - and AIC values in the 9000's.
+
+The variable of Ball Park Factor was used an offset in all models.
+
+## American vs National League
+
+Using a quasipoisson regression:
+$$
+log(\frac{\lambda_i}{BPF_i}) = 0.58768(\mathbf{I}_{AL_i}) +0.51602(\mathbf{I}_{NL_i})
+$$
+
+Using observed data it was found:
+```{r,ech=F}
+AL_rate <- 1.799816
+NL_rate <- 1.675343
+Rates <- data.frame(AL_rate,NL_rate)
+colnames(Rates) <- c("American League", "National League")
+knitr::kable(Rates)
+```
+
+
+## Division Comparisons(West vs Central vs East)
+
+Using a quasipoisson regression:
+$$\begin{aligned}
+log(\frac{\lambda_i}{BPF_i}) = 0.50845(\mathbf{I}_{AC_i}) &+ 0.64126(\mathbf{I}_{AE_i}) + 0.61208(\mathbf{I}_{AW_i})\\
+&+ 0.55202(\mathbf{I}_{NC_i}) + 0.50342(\mathbf{I}_{NE_i})\\
+&+ 0.48658(\mathbf{I}_{NW_i})
+\end{aligned}$$
+
+Using the observed data, it was found:
+```{r,echo=F}
+Season_by_Team_Updated <- Season_by_Team %>% subset(yearID != 2020)
+Season_by_Team_Updated<- Season_by_Team_Updated %>% mutate(lgDiv = ifelse(lgID == "NL" & divID == "W", "NW",
+                                                                  ifelse(lgID == "NL" & divID == "C", "NC",
+                                                                  ifelse(lgID == "NL" & divID == "E", "NE",
+                                                                  ifelse(lgID == "AL" & divID == "W", "AW",
+                                                                 ifelse(lgID == "AL" & divID == "C",
+                                                                        "AC","AE"))))))
+HR_combo_mod_off_over <- glm(HR ~ as.factor(lgDiv)+offset(log(BPF))-1, data=Season_by_Team_Updated, quasipoisson)
+rate_AC <- exp(HR_combo_mod_off_over$coefficients[1])
+rate_AE <- exp(HR_combo_mod_off_over$coefficients[2])##Has the highest rate
+rate_AW <- exp(HR_combo_mod_off_over$coefficients[3])
+rate_NC <- exp(HR_combo_mod_off_over$coefficients[4])
+rate_NE <- exp(HR_combo_mod_off_over$coefficients[5])
+rate_NW <- exp(HR_combo_mod_off_over$coefficients[6])
+Rates <- data.frame(Rates = round(c(rate_AC,rate_AE,rate_AW,rate_NC,rate_NE,rate_NW),4))
+rownames(Rates) <- c("AL Central", "AL East", "AL West", "NL Central", "NL East", "NL West")
+knitr::kable(Rates)
+
+```
+
+## Team Comparisons
+
+Using a quasipoisson model, the homerun rates for each team were modeled. 
+
+Using the observed data it was found the top 5 teams were:
+```{r,echo=F}
+HR_lgmod_over_off <- glm(HR ~ franchID+offset(log(BPF))-1,data=Season_by_Team_Updated,quasipoisson)
+rates <- exp(HR_lgmod_over_off$coefficients)
+Team_rates <- data.frame("Rate" = rates,Team = c("ANA","ARI","ATL","BAL","BOS","CHC","CHW","CIN","CLE","COL","DET","FLA","HOU","KCR","LAD","MIL","MIN","NYM","NYY","OAK","PHI","PIT","SDP","SEA","SFG","STL","TBD","TEX","TOR","WSN"))
+Team_rates <- Team_rates[order(Team_rates$Rate,decreasing = T),] 
+rownames(Team_rates) <- NULL
+rates_team <- t(Team_rates)
+colnames(rates_team) <- rates_team[2,]
+knitr::kable(t(rates_team[1,1:5]))
+```
+
+
+
+
+## Conclusions
+
+The likelihood of a team making the playoffs can be modeled using Offensive and mutated Offensive statistics.
+
+For a team with an average batting average, they would need to score 1.72 runs per ever 10 at bats to have a 90% chance of making the playoffs.
+
+The America League has a higher homerun rate than the national league, with the American League East having the highest rate of all divisions. 
+
+An American League East team - New York Yankees - have the highest homerun rate, with 3 of the 5 top teams coming from the American League East and all 5 top teams coming from the American League.
+
+
+
+
+
+
