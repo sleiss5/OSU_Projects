@@ -7,15 +7,15 @@ This project analyzes the likelihood of a professional baseball team making the 
 ### Project Report
 
 * The full written report for this project can be found in two forms: 
-* [Report PDF](Playoff Likelihood MLB/Shannon Leiss - Final Project.pdf)
-* [Report Markdown](Playoff Likelihood MLB/Project Write Up.Rmd)
+* [Report PDF](Shannon Leiss - Final Project.pdf)
+* [Report Markdown](Project Write Up.Rmd)
 
 ### Project Presentation 
 
 * The presentation slides for this project can be found below:
-* [Report Presentation](Playoff Likelihood MLB/Final Presentation.pdf)
+* [Report Presentation](Final Presentation.pdf)
 
 ### Project Work 
 
 * The R code used for the analysis for this project can be found below:
-* [Report R Work](Playoff Likelihood MLB/Shannon Leiss - Final Project.R)
+* [Report R Work](Shannon Leiss - Final Project.R)
