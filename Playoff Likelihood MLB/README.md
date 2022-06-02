@@ -7,18 +7,19 @@ This project analyzes the likelihood of a professional baseball team making the 
 ### Project Report
 
 * The full written report for this project can be found in two forms: 
-  * [Report PDF](https://github.com/sleiss5/OSU_Projects/blob/main/Playoff%20Likelihood%20MLB/Shannon%20Leiss%20-%20Final%20Project.pdf)
-  * [Report RMD](https://github.com/sleiss5/OSU_Projects/blob/main/Playoff%20Likelihood%20MLB/Project%20Write%20Up.Rmd)
+  * [Report PDF](https://github.com/sleiss5/OSU_Projects/blob/main/Playoff%20Likelihood%20MLB/Generalized%20Regression%20Models/Shannon%20Leiss%20-%20Final%20Report.pdf)
+  * [Report RMD](https://github.com/sleiss5/OSU_Projects/blob/main/Playoff%20Likelihood%20MLB/Generalized%20Regression%20Models/Project%20Write%20Up.Rmd)
 
 ### Project Presentation 
 
-* The presentation slides for this project can be found below:
-  * [Report Presentation PDF](https://github.com/sleiss5/OSU_Projects/blob/main/Playoff%20Likelihood%20MLB/Final%20Presentation.pdf)
+* The presentation slides for this project can be found below in two forms:
+  * [Report Presentation PDF](https://github.com/sleiss5/OSU_Projects/blob/main/Playoff%20Likelihood%20MLB/Generalized%20Regression%20Models/Presentation.pdf)
+  * [Report Presentation RMD](https://github.com/sleiss5/OSU_Projects/blob/main/Playoff%20Likelihood%20MLB/Generalized%20Regression%20Models/Presentation.Rmd)
 
 ### Project Work 
 
 * The R code used for the analysis in this project can be found below:
-  * [Report Work R](https://github.com/sleiss5/OSU_Projects/blob/main/Playoff%20Likelihood%20MLB/Shannon%20Leiss%20-%20Final%20Project.R)
+  * [Report Work R](https://github.com/sleiss5/OSU_Projects/blob/main/Playoff%20Likelihood%20MLB/Generalized%20Regression%20Models/Shannon%20Leiss%20-%20Final%20Project.R)
 
 
 # Optimizing Likelihood of MLB Playoff Apperance
