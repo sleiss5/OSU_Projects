@@ -1,0 +1,205 @@
+---
+title: "Optimizing Likelihood of MLB Playoff Apperance"
+author: "Shannon Leiss"
+date: "12/6/2021"
+output: beamer_presentation
+
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library(tidyverse)
+library(Lahman)
+```
+
+## Introduction
+
+Many different attempts have been made to optimize an equation for predicting a team's probability of making the playoffs in all sports. 
+
+`Teams` dataset in the `Lahman` package provides team records for the 1871 - 2020 baseball season, along with offensive statistics, defensive statistics, and if the team made the playoffs. 
+
+
+
+
+## Logistic Model 
+
+A simple logistic regression can be used to model the log-odds that a team makes the playoffs, based off of a teams run average and a teams batting average 
+$$
+log(\frac{p_i}{1-p_i}) = \alpha + \beta_{1}(R_i) + \beta_2(H_i)
+$$
+The terms that are observed are:
+$$\begin{aligned}
+y_i &= \mbox{ Indicator that a team made the playoffs}\\
+R_i &= \mbox{ Team's run average, found by dividing Runs by At Bats}\\
+H_i &= \mbox{ Team's batting average, found by dividing Hits by At Bats}
+\end{aligned}$$
+Where the unobserved variables are $\alpha, \beta_1, \beta_2,$ and $p_i$, where $p_i$ is defined as: 
+$$
+p_i = \frac{e^{\alpha + \beta_{1}(R_i) + \beta_2(H_i)}}{1+e^{\alpha + \beta_{1}(R_i) + \beta_2(H_i)}}
+$$
+
+## Questions of Interest:
+
+What values of $\alpha, \beta_1$, and $\beta_2$ optimize the logistic function for the likelihood of a Baseball team making the playoffs?
+
+Which optimization method - Newton-Raphson or Quasi-Newton - gets closest to the optimized values found when the logistic model is fit?
+
+What are the 95% confidence intervals of the $\hat{\alpha}, \hat{\beta_1}$, and $\hat{\beta_2}$ optimized values?
+
+## Methods 
+
+The following methods will be used to optimize $\theta = \begin{pmatrix} \alpha \\ \beta_1 \\ \beta_2\end{pmatrix}$
+
+- Newton-Raphson
+
+- Quasi-Newton
+
+- Bootstrapping for Confidence Intervals 
+
+## Distribution of Model
+
+Since the response variable of $y_i$ is a binary response, the logistic regression will follow a Bernoulli distribution. The distribution is:
+$$\begin{aligned}
+f(y_i) &= p_i^{y_i}(1-p_i)^{1-y_i}\\
+f(y_i) &= (\frac{e^{\alpha + \beta_{1}(R_i) + \beta_2(H_i)}}{1+e^{\alpha + \beta_{1}(R_i) + \beta_2(H_i)}})^{y_i}(1-(\frac{e^{\alpha + \beta_{1}(R_i) + \beta_2(H_i)}}{1+e^{\alpha + \beta_{1}(R_i) + \beta_2(H_i)}}))^{1-y_i}\\
+f(y_i) &= (\frac{e^{\alpha + \beta_{1}(R_i) + \beta_2(H_i)}}{1+e^{\alpha + \beta_{1}(R_i) + \beta_2(H_i)}})^{y_i} (\frac{1}{1+e^{\alpha + \beta_{1}(R_i) + \beta_2(H_i)}})^{1-y_i}
+\end{aligned}$$
+
+## Log-Likelihoods of Model 
+
+$${\tiny \begin{aligned}
+\ell(\theta) &= \sum_{i=1}^{n=660} y_ilog(\frac{e^{\alpha + \beta_{1}(R_i) + \beta_2(H_i)}}{1+e^{\alpha + \beta_{1}(R_i) + \beta_2(H_i)}}) + (1-y_i)log(\frac{1}{1+e^{\alpha + \beta_{1}(R_i) + \beta_2(H_i)}})\\
+\ell(\theta) &= \sum_{i=1}^{n=660}y_i(\alpha+\beta_1(R_i)+\beta_2(H_i)) - log(1+e^{\alpha + \beta_{1}(R_i) + \beta_2(H_i)})\\
+\ell'(\theta) &= \begin{bmatrix}
+\sum_{i=1}^{n=660}y_i - \frac{e^{\alpha + \beta_{1}(R_i) + \beta_2(H_i)}}{1+e^{\alpha + \beta_{1}(R_i) + \beta_2(H_i)}} \\
+\sum_{i=1}^{n=660} R_i(y_i) - \frac{(R_i)e^{\alpha + \beta_{1}(R_i) + \beta_2(H_i)}}{1+e^{\alpha + \beta_{1}(R_i) + \beta_2(H_i)}}\\
+\sum_{i=1}^{n=660} H_i(y_i) - \frac{(H_i)e^{\alpha + \beta_{1}(R_i) + \beta_2(H_i)}}{1+e^{\alpha + \beta_{1}(R_i) + \beta_2(H_i)}}
+\end{bmatrix} = \begin{bmatrix}
+\sum_{i=1}^{n=660}y_i - p_i \\
+\sum_{i=1}^{n=660} R_i(y_i) - R_i(p_i)\\
+\sum_{i=1}^{n=660} H_i(y_i) - H_i(p_i)
+\end{bmatrix}\\
+\mbox{Letting C} &= e^{\alpha + \beta_{1}(R_i) + \beta_2(H_i)}\\
+\ell''(\theta) &= \begin{bmatrix}
+\sum_{i=1}^{n=660}- \frac{C}{(1+C)^2} & \sum_{i=1}^{n=660}-R_i \frac{C}{(1+C)^2} &\sum_{i=1}^{n=660}-H_i \frac{C}{(1+C)^2}\\
+\sum_{i=1}^{n=660}- R_i\frac{C}{(1+C)^2} & \sum_{i=1}^{n=660}-(R_i^2) \frac{C}{(1+C)^2} & \sum_{i=1}^{n=660}- (R_iH_i)\frac{C}{(1+C)^2}\\
+\sum_{i=1}^{n=660}- H_i\frac{C}{(1+C)^2} & \sum_{i=1}^{n=660}- (R_iH_i)\frac{C}{(1+C)^2} & \sum_{i=1}^{n=660}- (H_i^2)\frac{C}{(1+C)^2}
+\end{bmatrix}
+\end{aligned}}$$
+
+
+## Methods: Newton-Raphson
+
+The updating rule for Newton-Raphson is: 
+$$\theta^{(t+1)} = \theta^{(t)} - (\ell''(\theta^{(t)}))^{-1}(\ell'(\theta^{(t)}))$$
+
+The optimization formula was allowed to update until the difference between $\theta^{(t+1)}$ and $\theta^{(t)}$ was less than 0.00001.
+
+
+## Methods: Quasi-Newton 
+
+Alternative method to Newton Method when the second derivative of $\ell(\theta)$ is complicated
+
+The updating rule for this method, using the Hessian approximation with the BFGS method:
+$$\begin{aligned}
+M^{(t+1)} = M^{(t)} -& \frac{(M^{(t)}(\theta^{(t+1)} - \theta^{(t)}))(M^{(t)}(\theta^{(t+1)} - \theta^{(t)}))^T}{ (\theta^{(t+1)} - \theta^{(t)})^TM^{(t)}(\theta^{(t+1)} - \theta^{(t)})} \\
+ +& \frac{(\ell'(\theta^{(t+1)}) - \ell'(\theta^{(t)}))(\ell'(\theta^{(t+1)}) - \ell'(\theta^{(t)}))^T}{(\theta^{(t+1)} - \theta^{(t)})^T (\ell'(\theta^{(t+1)}) - \ell'(\theta^{(t)}))}
+\end{aligned}$$
+
+
+##  Methods: Bootstraping for Confidence Intervals 
+
+- Resampling of the Original observed data and then optimizing the resampled data
+
+- 10,000 iterations were run to produce 10,000 optimized values of $\theta$
+
+- Resampled data optimized by Quasi-Newton method
+
+## Results 
+
+Starting points:
+$\theta$ = $\begin{pmatrix}0 \\ 0\\0\end{pmatrix},\begin{pmatrix}-1 \\ 1\\-1\end{pmatrix}, \begin{pmatrix} -8\\ 80\\-20\end{pmatrix}$ 
+
+All optimized values, along with iterations and the estimated parameters from the logistic regression 
+```{r,echo=F}
+Newton <- matrix(c(-7.8077,87.7043,-19.5363,5,-7.8077,87.7043,-19.5363,4,-7.8077,87.7043,-19.5363,5),nrow=3,ncol=4,byrow = T)
+Quasi <- matrix(c(-7.8015,87.6818,-19.5476,28,-7.8219,87.6086,-19.4316,25,-7.8214,87.6017,-19.4302,18),nrow=3,ncol=4,byrow = T)
+GLM <- matrix(c(-7.808,87.704,-19.536,4),nrow=1,ncol=4,byrow=T)
+Frame <- rbind(Newton,Quasi,GLM)
+colnames(Frame) <- c("Alpha", "Beta 1", "Beta 2", "Runs")
+rownames(Frame) <- c("Newton:(0,0,0)", "Newton:(-1,1,-1)", "Newton:(-8,80,-20)", "Quasi-Newton:(0,0,0)", "Quasi-Newton:(-1,1,-1)","Quasi-Newton:(-8,80,-20)", "Fisher Scoring(through glm()):")
+knitr::kable(Frame)
+```
+
+## Results: Confidence Intervals
+
+```{r,echo=F}
+a <- c(-12.1018, -3.7367, -7.8636, 2.1280)
+b1 <- c(67.6702, 109.1632, 88.0728, 10.5754)
+b2 <- c(-41.5621, 2.2570, -19.5275, 11.0820)
+Frame <- rbind(a,b1,b2)
+colnames(Frame) <- c("Lower", "Upper", "Estimate", "Standard Deviation")
+rownames(Frame) <- c("Alpha", "Beta 1", "Beta 2")
+knitr::kable(Frame)
+```
+
+
+## Conclusions
+
+- Newton-Raphson optimization takes the least amount of iterations and gets closest to the estimated values from the logistic regression model.
+
+- Quasi-Newton optimization has shortest computation time and simpler implementation but takes more iterations 
+
+- Both methods are fairly close to each other
+
+- Starting value: 
+  - Doesn't impact number of iterations for Newton-Raphson
+  - Impacts number of iterations for Quasi-Newton 
+  
+## Models Created from Optimization
+
+Using Newton-Raphson optimized values:
+$$
+log(\frac{p_i}{1-p_i}) = -7.808 + 87.704(R_i) - 19.536(H_i)
+$$
+
+Using Quasi-Newton estimate from the bootstrapping method:
+$$
+log(\frac{p_i}{1-p_i}) = -7.864 + 88.073(R_i) - 19.528(H_i)
+$$
+
+
+## Probability of Making the Playoffs
+
+```{r,echo=F}
+Season_by_Team <- Teams
+Season_by_Team <- Season_by_Team%>%subset(yearID >= 1998) ## Choosing all seasons from 1998-2020
+Season_by_Team <- Season_by_Team %>% 
+  mutate(Playoffs = ifelse(DivWin == "Y" | WCWin == "Y",1,0),
+         WS_Appearance = ifelse(LgWin == "Y",1,0),
+         WS_Champ = ifelse(WSWin == "Y",1,0) ) ##Turning Playoff Appearance in Binary
+## Getting all offensive variables and removing 2020
+Season_Offensive <- Season_by_Team[Season_by_Team$yearID != 2020,c(15:21,26,44,49:51)] 
+Season_Offensive <- Season_Offensive%>% mutate(RperAB = R/AB, HperAB = H/AB)
+r <- Season_Offensive[631:660,13]
+h <- Season_Offensive[631:660,14]
+a<- -7.808
+b1 <- 87.704
+b2 <- -19.536
+odds <- exp(a+b1*r+b2*h)
+prob <- odds/(1+odds)
+a1 <- -7.864
+b12<- 88.073
+b22 <- -19.528
+odds2 <- exp(a1+b12*r+b22*h)
+prob2 <- odds2/(1+odds2)
+teams <- Season_by_Team$franchID[631:660]
+Prob_by_Team <- data.frame(Team = teams, "Newton" = round(prob,3),"Quasi"=round(prob2,3) )
+Prob_by_Team <- t(Prob_by_Team)
+knitr::kable(Prob_by_Team[,1:8])
+knitr::kable(Prob_by_Team[,9:16])
+knitr::kable(Prob_by_Team[,17:24])
+knitr::kable(Prob_by_Team[,25:30])
+```
+
+

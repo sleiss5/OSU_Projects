@@ -1,0 +1,158 @@
+---
+title: "Project work"
+author: "Shannon Leiss"
+date: "12/6/2021"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(Lahman)
+setwd("~/OSU/F2021/ST 541/Project/")
+set.seed(101214)
+```
+
+## Optimizing 
+
+```{r}
+Season_by_Team <- Teams
+Season_by_Team <- Season_by_Team%>%subset(yearID >= 1998)
+Season_by_Team <- Season_by_Team %>% mutate(Playoffs = ifelse(DivWin == "Y" | WCWin == "Y",1,0),WS_Appearance = ifelse(LgWin == "Y",1,0),WS_Champ = ifelse(WSWin == "Y",1,0) )
+Season_Offensive <- Season_by_Team[Season_by_Team$yearID != 2020,c(15:21,26,44,49:51)] 
+Season_Offensive <- Season_Offensive%>% mutate(RperAB = R/AB, HperAB = H/AB)
+hist(Season_by_Team$HR)
+hist(Season_Offensive$H)
+hist(Season_Offensive$R)
+hist(Season_Offensive$AB)
+hist(Season_Offensive$RperAB)
+hist(Season_Offensive$HperAB)
+##It can be seen that the number of HR a team hits in a season is approximately normal 
+##It can also be seen that hits and runs and At bats are also approximately normal 
+##Models that were found to be "best" from glm project 
+mod1 <- glm(Playoffs ~ R+AB+R*AB,data=Season_Offensive,family=binomial)
+mod2 <- glm(Playoffs ~RperAB + HperAB,data=Season_Offensive,family=binomial)
+hist(mod1$fitted.values)
+hist(mod2$fitted.values)
+log_odds_1 <- mod1$fitted.values
+odds_1 <- exp(log_odds_1)
+probs_1 <- odds_1/(1+odds_1)
+hist(probs_1)
+##Since this is binomial regression, we can assume that the log odds of a team making the playoffs has a bernoulli distribution with p=Runs+AtBat+Runs*AtBats for model 1 and follows a bernoulli distribution where p=RperAb + HperAB for the second model
+##It can also be noted that all of those predictor variables are noramally distributed 
+
+##Newton - Model 2
+New_Offensive <- Season_Offensive[,c(13,14,10)]
+bernou <- function(x,theta){
+  y <- x[,3]
+  r <- x[,1]
+  h <- x[,2]
+  a <- theta[1]
+  b1 <- theta[2]
+  b2 <- theta[3]
+  p <- (exp(a+r*b1+h*b2))/(1+exp(a+r*b1+h*b2))
+  dbinom(y,1,p)
+}
+log.like.new <- function(x,theta){
+  d <- bernou(x,theta)
+  -1*sum(log(d))
+}
+y <- New_Offensive$Playoffs
+r <- New_Offensive$RperAB
+h <- New_Offensive$HperAB
+log.like.prime <- function(theta1,theta2,theta3){
+  a <- vector(length = nrow(New_Offensive))
+  for(i in 1:nrow(New_Offensive)){
+    a[i] <- y[i] - (exp(theta1+theta2*r[i]+theta3*h[i])/(exp(theta1+theta2*r[i]+theta3*h[i])+1))
+  }
+  b1 <- vector(length = nrow(New_Offensive))
+  for(i in 1:nrow(New_Offensive)){
+    b1[i] <- r[i]*y[i] - ((r[i]*exp(theta1+theta2*r[i]+theta3*h[i]))/(exp(theta1+theta2*r[i]+theta3*h[i])+1))
+  }
+  b2 <- vector(length = nrow(New_Offensive))
+  for(i in 1:nrow(New_Offensive)){
+    b2[i] <- h[i]*y[i] - ((h[i]*exp(theta1+theta2*r[i]+theta3*h[i]))/(exp(theta1+theta2*r[i]+theta3*h[i])+1))
+  }
+  out <- matrix(c(sum(a),sum(b1),sum(b2)))
+  return(out)
+}
+log.lik.prime.2 <- function(theta1,theta2,theta3){
+  a <- vector(length = nrow(New_Offensive))
+  for(i in 1:nrow(New_Offensive)){
+    a[i] <- - (exp(theta1+theta2*r[i]+theta3*h[i])/((exp(theta1+theta2*r[i]+theta3*h[i])+1)^2))
+  } 
+  b1 <- vector(length = nrow(New_Offensive))
+  for(i in 1:nrow(New_Offensive)){
+    b1[i] <- - (((r[i]^2)*exp(theta1+theta2*r[i]+theta3*h[i]))/((exp(theta1+theta2*r[i]+theta3*h[i])+1)^2))
+  }  
+  b2 <- vector(length = nrow(New_Offensive))
+  for(i in 1:nrow(New_Offensive)){
+    b2[i] <- - (((h[i]^2)*exp(theta1+theta2*r[i]+theta3*h[i]))/((exp(theta1+theta2*r[i]+theta3*h[i])+1)^2))
+  }  
+  ab1 <- vector(length = nrow(New_Offensive))
+  for(i in 1:nrow(New_Offensive)){
+    ab1[i] <- - (((r[i])*exp(theta1+theta2*r[i]+theta3*h[i]))/((exp(theta1+theta2*r[i]+theta3*h[i])+1)^2))
+  } 
+  ab2<- vector(length = nrow(New_Offensive))
+  for(i in 1:nrow(New_Offensive)){
+    ab2[i] <- - (((h[i])*exp(theta1+theta2*r[i]+theta3*h[i]))/((exp(theta1+theta2*r[i]+theta3*h[i])+1)^2))
+  } 
+  b1b2 <- vector(length = nrow(New_Offensive))
+  for(i in 1:nrow(New_Offensive)){
+    b1b2[i] <- - (((r[i]*h[i])*exp(theta1+theta2*r[i]+theta3*h[i]))/((exp(theta1+theta2*r[i]+theta3*h[i])+1)^2))
+  }
+  out <- matrix(c(sum(a), sum(ab1), sum(ab2),sum(ab1), sum(b1), sum(b1b2),sum(ab2),sum(b1b2),sum(b2)), nrow=3,byrow = TRUE)
+  return(out)
+}
+newton_MLE <- function(theta,m=10000, tol=0.00001){
+  iter <- 0
+  theta_t <- theta
+  theta <- theta_t - solve(log.lik.prime.2(theta1=theta_t[1,],theta2=theta_t[2,],theta3=theta_t[3,])) %*% log.like.prime(theta1=theta_t[1,],theta2=theta_t[2,],theta3=theta_t[3,])
+  while(abs(theta[1,] - theta_t[1,])>tol){
+    while(abs(theta[2,] - theta_t[2,])>tol){
+      while(abs(theta[3,] - theta_t[3,])>tol){
+        iter <- iter+1
+        if(iter > m)
+          stop("No solution found")
+          theta_t <- theta
+          theta <- theta_t - solve(log.lik.prime.2(theta1=theta_t[1,],theta2=theta_t[2,],theta3=theta_t[3,])) %*%                                       log.like.prime(theta1=theta_t[1,],theta2=theta_t[2,],theta3=theta_t[3,])
+
+      }
+    }
+  }
+  info <<- list(theta,iter)
+  return(info)
+}
+newton_MLE(theta=rbind(-8,80,-20)) ##Matches output from GLM
+newton_MLE(theta=rbind(0,0,0))
+
+##Trying the quasinewton method
+optim(par=c(0,0,0),fn=log.like.new,x=New_Offensive,method="BFGS") ##Implementation of the quasinewton method
+optim(par=c(-1,1,-1),fn=log.like.new,x=New_Offensive,method="BFGS") ##Implementation of the quasinewton method 
+optim(par=c(-8,80,-20),fn=log.like.new,x=New_Offensive,method="BFGS") ##Implementation of the quasinewton method 
+
+##Quasi-Newton takes longer than regualr Newton 
+
+##Bootstarping for confidence intervals of estimates, starting at 0,0,0, using resampling of the data and allowing for replicates:
+set.seed(101214)
+iter<- 10000
+thetas <- matrix(nrow=3,ncol = iter)
+for(i in 1:iter){
+  Updated_Offsive <- New_Offensive[sample(1:nrow(New_Offensive),replace=T),]
+  y <- Updated_Offsive$Playoffs
+  r <- Updated_Offsive$RperAB
+  h <- Updated_Offsive$HperAB
+  x <- optim(par=c(0,0,0),fn=log.like.new,x=Updated_Offsive,method="BFGS")
+  thetas[,i] <- x$par
+}
+ci.95.a <- quantile(thetas[1,],c(0.025,0.975),na.rm=T)
+ci.95.b1 <- quantile(thetas[2,],c(0.025,0.975),na.rm=T)
+ci.95.b2 <- quantile(thetas[3,],c(0.025,0.975),na.rm=T)
+Intervals <- data.frame(Lower = c(ci.95.a[1], ci.95.b1[1], ci.95.b2[1]), Upper = c(ci.95.a[2], ci.95.b1[2], ci.95.b2[2]), Estimate = c(mean(thetas[1,]),mean(thetas[2,]),mean(thetas[3,])), "Standard Deviation" = c(sd(thetas[1,]),sd(thetas[2,]),sd(thetas[3,])))
+rownames(Intervals) <- c("a", "b1", "b2")
+Intervals
+## optim used since the computing time is faster, even if the number of iterations needed may be more than the Newton-Method
+```
+
+
+
