@@ -8,16 +8,16 @@ This project analyzes the likelihood of a professional baseball team making the 
 
 * The full written report for this project can be found in two forms: 
   * [Report PDF](https://github.com/sleiss5/OSU_Projects/blob/main/Playoff%20Likelihood%20MLB/Shannon%20Leiss%20-%20Final%20Project.pdf)
-  * [Report Markdown](https://github.com/sleiss5/OSU_Projects/blob/main/Playoff%20Likelihood%20MLB/Project%20Write%20Up.Rmd)
+  * [Report RMD](https://github.com/sleiss5/OSU_Projects/blob/main/Playoff%20Likelihood%20MLB/Project%20Write%20Up.Rmd)
 
 ### Project Presentation 
 
 * The presentation slides for this project can be found below:
-  * [Report Presentation](https://github.com/sleiss5/OSU_Projects/blob/main/Playoff%20Likelihood%20MLB/Final%20Presentation.pdf)
+  * [Report Presentation PDF](https://github.com/sleiss5/OSU_Projects/blob/main/Playoff%20Likelihood%20MLB/Final%20Presentation.pdf)
 
 ### Project Work 
 
-* The R code used for the analysis for this project can be found below:
+* The R code used for the analysis in this project can be found below:
   * [Report Work R](https://github.com/sleiss5/OSU_Projects/blob/main/Playoff%20Likelihood%20MLB/Shannon%20Leiss%20-%20Final%20Project.R)
 
 
@@ -29,9 +29,18 @@ The Logistic model that was found within the above project was used to further i
 
 ### Project Report
 
+* The full written report for this project can be found in two forms: 
+ * [Report PDF](https://github.com/sleiss5/OSU_Projects/blob/main/Playoff%20Likelihood%20MLB/Optimization/Shannon%20Leiss%20-%20Final%20Report.pdf)
+ * [Report RMD](https://github.com/sleiss5/OSU_Projects/blob/main/Playoff%20Likelihood%20MLB/Optimization/Project%20Write%20Up.Rmd)
 
 ### Project Presentation 
 
+* The presentation slides for this project can be found below in two forms:
+ * [Report Presentation PDF](https://github.com/sleiss5/OSU_Projects/blob/main/Playoff%20Likelihood%20MLB/Optimization/Presentation.pdf)
+ * [Report Presentation RMD](https://github.com/sleiss5/OSU_Projects/blob/main/Playoff%20Likelihood%20MLB/Optimization/Presentation.Rmd)
 
 ### Project Work 
+
+* The R code used for the analysis in this project can be found below:
+ * [Report Work R](https://github.com/sleiss5/OSU_Projects/blob/main/Playoff%20Likelihood%20MLB/Optimization/Project%20Work.Rmd)
 
