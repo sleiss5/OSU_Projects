@@ -19,4 +19,4 @@ This [folder](https://github.com/sleiss5/OSU_Projects/tree/main/Data%20Visualiza
 
 ## Greek Life Participation by High School Athletes
 
-This [project](https://github.com/sleiss5/OSU_Projects/tree/main/Greek%20Life%20Participation%20by%20Athletes) looks into traits of incoming undergraduate students at American Universities to see if there specific types of students are more likely to join Greek Life.
+This [project](https://github.com/sleiss5/OSU_Projects/tree/main/Greek%20Life%20Participation%20by%20Athletes) looks into traits of incoming undergraduate students at American Universities to see if specific types of students are more likely to join Greek Life.
