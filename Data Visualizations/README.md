@@ -1,7 +1,5 @@
 # Data Visualizations
 
-
-
 ## No Hitters in MLB
 
 The following visualizations use [data](https://github.com/sleiss5/OSU_Projects/blob/main/Data%20Visualizations/Interactive%20And%20Animated%20MLB%20Plots/No%20Hitter.csv) sourced from *Baseball Reference*.
@@ -21,3 +19,5 @@ The following visualizations use [data](https://github.com/sleiss5/OSU_Projects/
     * The second plot shows the number of No Hitters per season since 1900 broken down by strikeouts and walks per game.
 
 * [Animated Plot](https://rpubs.com/sleiss/final_assignment4) and [RMD](https://github.com/sleiss5/OSU_Projects/blob/main/Data%20Visualizations/Interactive%20And%20Animated%20MLB%20Plots/R%20Code%20for%20animated) uses the No Hitter data from above and data from the *Lahman* R package to inspect the per season records of all hall of fame pitchers who threw at least one no hitter in their career.
+
+
