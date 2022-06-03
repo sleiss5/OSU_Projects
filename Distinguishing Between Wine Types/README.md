@@ -19,3 +19,4 @@ This project used multiple Multivariate analysis techniques to distinguish betwe
 * The two wine datasets used for this project can be found below:
     * [Red Wine Data](https://github.com/sleiss5/OSU_Projects/blob/main/Distinguishing%20Between%20Wine%20Types/winequality-red.csv)
     * [White Wine Data](https://github.com/sleiss5/OSU_Projects/blob/main/Distinguishing%20Between%20Wine%20Types/winequality-white.csv)
+ 
