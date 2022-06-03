@@ -1,0 +1,524 @@
+---
+title: "Assignment 3"
+author: "Shannon Leiss"
+date: "5/9/2021"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(readxl)
+library(tidyverse)
+library(colorspace)
+library(patchwork)
+```
+
+## Data 
+
+```{r}
+## Data import and manipulation: Sunday, May 9th - 10 am
+No_Hitter <- read_csv("~/Shannon/sp2021/Assignment 3/Assignment 3 - Shannon Leiss/No HItter.csv")
+head(No_Hitter)
+## Note: This data was imported on April 29th. Since then more no-hitters have been thrown for the 2021 season, for this reason, I will not be looking at 2021 stats
+No_hit <- No_Hitter %>%
+  filter(Year != 2021)
+View(No_hit)
+## Varaible definitions can be found: https://www.baseball-reference.com/friv/no-hitters-and-perfect-games.shtml
+## Define home teams with the team names and remove the columns of @ and the results column that serves no use
+## https://community.rstudio.com/t/condition-ifelse-in-mutate-function/55049
+No_hit <- No_hit %>%
+  mutate(Home = ifelse(is.na(X9), Tm, Opp))%>%
+  select(-c(X9, Rslt))
+## Redefining Perfect games column 
+No_hit <- No_hit %>%
+  mutate(Perfect = ifelse(is.na(Prfct), 0, 1))%>%
+  select(-Prfct)
+## * next to neam means left handed pitcher
+##https://stackoverflow.com/questions/7963898/extracting-the-last-n-characters-from-a-string-in-r
+RIGHT = function(x,n){
+  substring(x,nchar(x)-n+1)
+}
+RIGHT(No_hit$Name,1)
+Test <- No_hit %>%
+  mutate(Pitches = ifelse(RIGHT(No_hit$Name,1) == "*", "L", "R"))
+View(Test)
+No_hit <- No_hit %>%
+  mutate(Pitches = ifelse(RIGHT(No_hit$Name,1) == "*", "L", "R")) %>%
+  select(-Rk)
+## Note: This took a lot longer than I expected, I hope Left handed vs Right handed trends show differences. 
+
+## Adding the league of the team, maybe this has some interesting trend?
+## https://www.fueledbysports.com/list-of-mlb-teams-in-the-american-league/
+AL <- c("BAL", "BOS", "CHW", "CLE", "DET", "HOU", "KAN", "LAA", "MIN", "NYY", "OAK", "SEA", "TBR", "TEX", "TOR")
+No_hit <- No_hit %>%
+  mutate(League = ifelse(Tm %in% AL, "AL", "NL"))
+## Sunday, May 9th - 11:30 pm
+```
+
+## Initial Data Analysis:
+
+```{r}
+## Thursday, May 13th - 11 am
+## Teams with the most no hitters:
+No_hit %>%
+  group_by(Tm) %>%
+  ggplot(aes(x=Tm))+
+  geom_bar()
+
+No_hit %>%
+  group_by(Tm) %>%
+  ggplot(aes(x=Tm))+
+  geom_bar()+
+  geom_text(stat = 'count',aes(label = ..count..), vjust = 0)+
+  coord_flip()
+
+## Quality control of data: There have been 23 perfect games in mlb history: Check against data
+No_hit %>%
+  count(Perfect == 1)
+
+Prop_perfect <- 23/(270+23)
+Prop_perfect
+## Data checks out!
+
+## Which teams have had perfect games?
+No_hit %>%
+  filter(Perfect == 1) %>%
+  group_by(Tm)%>%
+  ggplot(aes(x=Tm))+
+  geom_bar()+
+  geom_text(stat = 'count',aes(label = ..count..), vjust = 0)
+
+## Distribution of Leagues:
+ggplot(No_hit, aes(x=League))+
+  geom_bar()+
+  geom_text(stat = 'count',aes(label = ..count..), vjust = 0)
+
+## Interesting, The NL has 73 more no hitters, this is interesting since both leagues have 15 teams, maybe the denstiy plots could show intersting trends:
+ggplot(No_hit, aes(Year, color=League))+
+  geom_freqpoly(binwidth=1)
+
+## This is due to data manipulation error, I forgot to account for historic teams that are no longer around, thus older teams were automatically grouped into NL, following steps are used to fix this: 
+unique(No_hit$Tm)
+##://www.baseball-reference.com/about/team_IDs.shtml
+NL <- c("CHC","MIA","WSN","PHI","SFG","LAD","CIN","NYM","ARI","COL", "FLA" ,"STL","ATL", "MON", "MIL", "PIT", "BRO", "BSN", "NYG", "PBS", "BTT", "COR","BUF","PRO","WOR")
+AL <- c("CHW","HOU","OAK","SEA","LAA" ,"DET", "MIN", "TBR", "NYY", "TEX", "KCR", "TOR","CAL", "CLE", "BAL", "MLN","SLB", "PHA", "WSH","SLM","KCP", "CHI","LOU", "BLN", "CLV","ROC", "KCC")
+## Fixing the League distinctions 
+No_hit <- No_hit %>%
+  mutate(League = ifelse(Tm %in% AL, "AL", "NL")) %>%
+  mutate(OppLeague = ifelse(Opp %in% AL, "AL", "NL"))%>%
+  mutate(ParkLeague = ifelse(Home %in% AL, "AL", "NL"))
+## 2 Hours of cross referencing dates of the No HItters thrown and the historic Baseball reference guide to find the proper leagues for each team. Especially for the few teams that only existed for a few seasons like the Kansas City PAckers
+## Thursday, May 13th - 1:50 pm - Work on more accurate distributions later
+
+
+## THursday, May 13th 4 pm
+ggplot(No_hit, aes(x=League))+
+  geom_bar()+
+  geom_text(stat = 'count',aes(label = ..count..), vjust = 0)
+## This seems more even, with the NL having only 25 more. This also makes sense as the national league is the older league: 46.1% of No-Hitters thrown by AL teams with 53.9% of No-Hitters being thrown by NL teams
+ggplot(No_hit, aes(Year, color=League))+
+  geom_freqpoly(binwidth=1)
+
+ggplot(No_hit, aes(Year))+
+  geom_freqpoly(binwidth=1)+
+  facet_wrap(~League)
+
+##Density plot?
+ggplot(No_hit, aes(Year, color=League))+
+  geom_density()
+
+## Games before 1901 only have accurate pitcher, teams, year, date, and pitchers handedness. For all data about concerning anything but the total number of no hitters(or variations on that), data after 1900 will be used.
+
+## Possible trends for which game pitched this is for the pitcher(Do more experenced pitchers have a higher likelihood of throwing no hitters?)
+No_hit %>%
+  filter(! is.na(Gcar)) %>%
+  ggplot(aes(Gcar))+
+  geom_histogram(binwidth=50)
+No_hit %>%
+  filter(! is.na(Gcar)) %>%
+  ggplot(aes(Gcar))+
+  geom_histogram(binwidth=50, aes(fill=League))
+No_hit %>%
+  filter(! is.na(Gcar)) %>%
+  ggplot(aes(Gcar))+
+  geom_density()
+
+No_hit %>%
+  filter(! is.na(Gcar)) %>%
+  ggplot(aes(Gcar, color=League))+
+  geom_density()
+
+## Majority of pitchers No hitters are within their first 300 games pitched, but this is not very informative since most pitchers pitch about 30 games per season so that just means that they throw their no hitter within 10 seasons. This does show that not many pitchers have thrown no hitters at older ages(having thrown 400+ games already), not very interesting since only the really good pitchers tend to stay starting pitchers for 10+ seasons
+## Thursday, May 13th 5:00 pm
+
+## Monday, May 17th - 12 pm
+## Does the league of the park they played at have an effect on number of no hitters?
+ggplot(No_hit, aes(x=ParkLeague))+
+  geom_bar()+
+  geom_text(stat = 'count',aes(label = ..count..), vjust = 0)
+
+ggplot(No_hit, aes(x=OppLeague))+
+  geom_bar()+
+  geom_text(stat = 'count',aes(label = ..count..), vjust = 0)
+
+## The park distribtuion is similar to overall no hitter distributin, however, more NL teams have been no hit than AL teams by 63 more - 60.1% of no hitters are thrown against NL teams, with 39.9% OF No-Hitters thrown against AL teams  does this have anything to do with years? 
+ggplot(No_hit, aes(Year, color=OppLeague))+
+  geom_freqpoly(binwidth=1)
+ggplot(No_hit, aes(Year, color=OppLeague))+
+  geom_density()
+ggplot(No_hit, aes(Year))+
+  geom_histogram(binwidth=10, aes(fill=OppLeague), color="black")
+No_hit %>%
+  group_by(Year, OppLeague)%>%
+  count(OppLeague)
+
+## Possible plot to try and polish:
+ggplot(No_hit, aes(x=cut_interval(Year, length=10), fill=OppLeague))+
+  geom_histogram(binwidth=10,position='dodge', stat='count')+
+  geom_text(stat = 'count',aes(label = ..count..),vjust=0, hjust=0)+
+  theme(axis.title.x=element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank())
+## Above interval of 10 years, only once did AL teams get no hit more than NL. However, until 2013 NL had more teams than the AL and interleague play only occured in the post season before 1997
+ 
+##No hitters by leagues by year
+ggplot(No_hit, aes(x=cut_interval(Year, length=10), fill=League))+
+  geom_histogram(binwidth=10,position='dodge', stat='count')+
+  geom_text(stat = 'count',aes(label = ..count..),vjust=0, hjust=0)+
+  theme(axis.title.x=element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank())
+##Possibly combine the above two some how. Would that make sense? Come back another day 
+
+##Pitch count: Is there a difference in Leagues? What about Years? 
+No_hit %>%
+  filter(!is.na(Pit)) %>%
+  ggplot(aes(x=Pit, y=Year))+
+  geom_count()
+
+No_hit %>%
+  filter(!is.na(Pit)) %>%
+  ggplot(aes(Year, Pit))+
+  geom_jitter()
+
+## Look back at the 80s if time permits, why is there not any recorded pitch counts from then, super weird. Possbile has something to do with data collection of the time. 
+No_hit %>%
+  filter(!is.na(Pit)) %>%
+  ggplot(aes(Pit, color=Year))+
+  geom_histogram(binwidth=5,aes(y=..density..))+
+  geom_density()
+
+
+No_hit %>%
+  filter(!is.na(Pit)) %>%
+  ggplot(aes(Pit, fill=League))+
+  geom_histogram(stat='count', position='dodge')
+
+No_hit %>%
+  filter(!is.na(Pit)) %>%
+ggplot(aes(Pit, color=League))+
+  geom_density()
+
+No_hit %>%
+  filter(!is.na(Pit)) %>%
+ggplot(aes(Pit, color=League))+
+  geom_histogram(binwidth=5,aes(y=..density.., fill=League),position='identity', alpha=.5)+
+  geom_density()
+
+No_hit %>%
+  filter(!is.na(Pit)) %>%
+ggplot(aes(Pit))+
+  geom_density()+
+  geom_histogram(binwidth=5,aes(y=..density.., fill=League),position='identity', alpha=.5)+
+  geom_density(aes(color=League))
+## American League pitchers tend to throw more pitches in their no hitters than National League pitchers: 
+## Lets polish this plot later: http://www.sthda.com/english/wiki/ggplot2-histogram-plot-quick-start-guide-r-software-and-data-visualization
+## Monday, May 17th - 3:45 pm
+
+## Wednesday, May 19th - 2 pm
+##More pitching questions: Do teams tend to allow there pitchers to throw more? Is there a league difference(in a different visualization)?
+No_hit %>%
+  filter(!is.na(Pit)) %>%
+  ggplot(aes(x=Pit, y=Tm))+
+  geom_boxplot()+
+  facet_wrap(~Pitches)
+## Team counts for no hitters:
+No_hit %>%
+  count(Tm, sort=TRUE)
+## This makes sense, most of these teams have been around for a long time. Youngest of these teams is Hou which has only been around since 1962 - however they did have Nolan Ryan when he was in his prime
+
+##Teams with only 1 no hitter
+No_hit %>%
+  count(Tm, sort=TRUE) %>%
+  filter(n == 1)
+
+Only_1 <- c("BTT", "CHI", "COR", "KCC", "KCP", "NYM", "PBS", "ROC", "SLM", "TBR", "TOR", "WOR")
+## Using teams that have more than one no hitter so the plot mostly won't have single points
+No_hit %>%
+  filter(!Tm %in% Only_1)%>%
+  filter(!is.na(Pit)) %>%
+  ggplot(aes(x=Pit, y=Tm))+
+  geom_boxplot()+
+  facet_wrap(~Pitches)
+
+No_hit %>%
+  filter(!Tm %in% Only_1)%>%
+  filter(!is.na(Pit)) %>%
+  ggplot(aes(x=Pit, y=Tm))+
+  geom_boxplot()
+## Reordered by median pitches
+No_hit %>%
+  filter(!Tm %in% Only_1)%>%
+  filter(!is.na(Pit)) %>%
+  ggplot(aes(x=Pit, y=reorder(Tm, Pit, FUN = median)))+
+  geom_boxplot()
+
+No_hit %>%
+  filter(!Tm %in% Only_1)%>%
+  filter(!is.na(Pit)) %>%
+  ggplot(aes(x=Pit, y=reorder(Tm, Pit, FUN = median)))+
+  geom_boxplot()+
+  facet_wrap(~Pitches)
+## The plot not broken down by handedness is interesting, but the ordering doesnt work for the faceting 
+
+## League and handedness for pitching?
+No_hit %>%
+  filter(!is.na(Pit)) %>%
+  ggplot(aes(x=Pit, y=Pitches))+
+  geom_boxplot()+
+  facet_wrap(~League)
+
+
+No_hit %>%
+  filter(!is.na(Pit)) %>%
+  ggplot(aes(x=Pit, y=League))+
+  geom_boxplot()+
+  facet_wrap(~Pitches)+
+  coord_flip()
+No_hit %>%
+  filter(!is.na(Pit)) %>%
+  ggplot(aes(x=Pit, y=Pitches))+
+  geom_boxplot()
+
+## Right handed pitchers throw fewer pitches than left handed pitchers overall
+## Handedness is an interesting trend, possibly polish these? DO something with handedness, in my mind some of the best pitchers are left handed so see if that rings true
+
+##Days of rest?
+## Manipulation is removing all Na values and 99 values since those are also NA of a different format for some reason 
+No_hit %>%
+  filter(!is.na(DR))%>%
+  filter(DR < 99)%>%
+ggplot(aes(DR, color=League))+
+  geom_density()
+
+No_hit %>%
+  filter(!is.na(DR))%>%
+  filter(DR < 99)%>%
+ggplot(aes(DR))+
+  geom_density()
+## Majority are thrown on normal days of rest. Nothing interesting here
+
+## Pitcher ERA before no hitters
+No_hit %>%
+  filter(ERA >= 0)%>%
+  ggplot(aes(ERA))+
+  geom_density()
+##Error due to ERA being treated as a character 
+
+No_hit %>%
+  filter(ERA > 0)%>%
+  ggplot(aes(x=cut_interval(as.numeric(ERA),length=.5)))+
+  geom_histogram(binwidth=1, stat='count')
+##ERA appears to be normally distributed with center between 2-4 earned runs per 9 innings 
+
+No_hit %>%
+  filter(ERA > 0)%>%
+  ggplot(aes(x=as.numeric(ERA)))+
+  geom_histogram(aes(y=..density..))+
+  geom_density(color="red")
+           
+No_hit %>%
+  filter(ERA > 0)%>%
+  ggplot(aes(x=as.numeric(ERA)))+
+  geom_histogram(aes(y=..density.., fill=Pitches),position='identity', alpha=.5)+
+  geom_density(aes(color=Pitches))+
+  geom_density()
+## Left and Right handed pitchers appear to have similar distributions of ERA with Left handed pitchers having a slightly flatter/wider distribution than right handed pitchers
+
+## Strike outs in No hitters: Do pitchers who throw more stikeouts tend to throw more no hitters or do more ground ball/contact oriented pitchers throw more no hitters
+No_hit <- No_hit %>%
+  mutate(SOPerc = (SO/AB)*100) %>%
+  mutate(GBPerc = (GB/AB)*100) %>%
+  mutate(ContactPerc = ((GB + FB)/AB)*100) %>%
+  mutate(Type = ifelse(ContactPerc > 65, "Contact", "Strikes"))
+## For this distinction, I stated that strikeout pitchers are considered pitchers who get at least 35% of their outs on strikeouts 
+No_hit %>% 
+  select(SOPerc:Type)
+No_hit %>%
+  filter(!is.na(Type)) %>%
+ggplot(aes(Year, fill=Type))+
+  geom_histogram(binwidth=10)
+## Overall, no hitters are accomplished with a majority of the outs coming from making contact - either fly balls or ground outs. 
+No_hit %>%
+  filter(!is.na(Type)) %>%
+  group_by(League)%>%
+  count(Type)
+
+No_hit %>%
+  count(Pitches)
+##23.5% of pitchers with no hitters are left handed. 76.5% of pitchers are right handed 
+
+No_hit %>%
+  filter(!is.na(Type)) %>%
+  count(Type, League, Pitches)%>%
+  ggplot(aes(Type, League))+
+  geom_tile(aes(fill=n))+
+  facet_wrap(~Pitches)+
+  scale_fill_continuous_sequential("YlOrRd")
+##Note: Polish plot that has to do with the type of pitcher, this is interesting.
+
+## Does the team a player pitches for change the distribution:
+
+No_hit %>%
+  filter(!is.na(Type)) %>%
+  count(Type, Tm, Pitches)%>%
+  ggplot(aes(Type, Tm))+
+  geom_tile(aes(fill=n))+
+  scale_fill_continuous_sequential("YlOrRd")
+## Hard to make a conclusion since many teams only have one no hitter
+
+##Overall, 58 of the no hitters were pitched by "Strike out pitchers" - which is 28% of the no hitters thrown. Does this change for Perfect games?
+No_hit %>%
+  filter(!is.na(Type)) %>%
+  filter(Perfect == 1)%>%
+  count(Type, League, Pitches)%>%
+  ggplot(aes(Type, League))+
+  geom_tile(aes(fill=n))+
+  facet_wrap(~Pitches)+
+  scale_fill_continuous_sequential("YlOrRd")
+## THe distribution changes for perfect games:
+No_hit %>%
+  filter(!is.na(Type)) %>%
+  filter(Perfect == 1)%>%
+  count(Type, League)%>%
+  ggplot(aes(Type, League))+
+  geom_tile(aes(fill=n))+
+  scale_fill_continuous_sequential("YlOrRd")
+No_hit %>% 
+  filter(!is.na(Type)) %>%
+  filter(Perfect == 1)%>%
+  count(Type, League)
+## For the perfect games that have pitching states, 12 of the 19 perfect games were thrown by an American league team with 11/19 being strike out games. 
+
+## Interesting unrelated fact(probably):
+No_hit %>%
+  count(Name, sort=TRUE)
+## Nolan Ryan has the most No-hitters/Perfect games
+No_hit %>%
+  count(Name, sort=TRUE)%>%
+  ggplot(aes(n))+
+  geom_bar()+
+  geom_text(stat = 'count',aes(label = ..count..), vjust = 0)
+## 212 out of 247 players to throw at least one no hitter have only thrown 1 in their career
+
+## Team distribution of no-hitters:
+No_hit %>%
+  count(Tm, sort=TRUE)%>%
+  ggplot(aes(n))+
+  geom_bar()+
+  geom_text(stat = 'count',aes(label = ..count..), vjust = 0)
+##Most teams have thrown 1-5 no hiters in franchise history 
+
+## PLayers per team thrown no hitters
+No_hit %>%
+  count(Name,Tm, sort=TRUE)
+
+No_hit %>%
+  filter(Perfect == 1)%>%
+  count(Name, sort = TRUE)
+## No player has thrown more than 1 perfect game
+No_hit %>%
+  filter(Perfect == 1)%>%
+  count(Pitches)
+No_hit %>%
+  filter(Perfect != 1)%>%
+  count(Pitches)
+##2/3 of the pitchers that have thrown perfect games are right handed, this is actually a lower percentage than right handed pitchers that have thrown no hitters overall. 34.7% of the perfect games have been thrown by left handed pitchers while only 22.6% of the no hitters- not including perfect games - have been pitched by left handed pitchers
+
+## Wednesday May 19th - 7:30 pm
+```
+
+## Polishing Plots:
+
+```{r}
+## Friday May 21st - 11:00 am
+## League differences per season 
+Leagues <- No_hit %>%
+  select(Year, League, OppLeague)
+NH_For <- Leagues %>%
+  count(League, Year)%>%
+  pivot_wider(names_from= League, values_from = n)%>%
+  mutate(AL_for = ifelse(is.na(AL), 0, AL))%>%
+  mutate(NL_for = ifelse(is.na(NL), 0, NL)) %>%
+  select(Year,AL_for,NL_for)
+NH_against <- Leagues %>%
+  count(OppLeague, Year)%>%
+  pivot_wider(names_from= OppLeague, values_from = n)%>%
+  mutate(AL_aga = ifelse(is.na(AL), 0, AL))%>%
+  mutate(NL_aga = ifelse(is.na(NL), 0, NL)) %>%
+  select(AL_aga,NL_aga)
+No_Hitter_Year <- cbind(NH_For,NH_against)
+League_Overall <- No_Hitter_Year %>%
+  mutate(NL_Over = NL_for - NL_aga)%>%
+  mutate(AL_Over = AL_for - AL_aga)%>%
+  select(Year, NL_Over:AL_Over)
+p1 <- ggplot(League_Overall, aes(x=Year, y=NL_Over))+
+  geom_point(aes(color = cut(NL_Over, c(-10,-.5, 0, 10))))+
+  geom_line(aes(y=0))+
+  scale_color_manual(name = "Season No Hitter Difference", values = c("(-10,-0.5]" = "red", "(-0.5,0]" = "black","(0,10]" = "green"), labels = c("Got No Hit More", "Equal","Threw More No Hitters"))+
+  theme(axis.title.x=element_blank(),axis.text.x=element_blank(), axis.ticks.x=element_blank())+
+  theme(legend.position = "none")+
+  ggtitle("National League Teams get No-Hit more than American League Teams")+
+  labs(subtitle = "Values were found by subtracting the number of No-Hitters pitched in each league from\n the number of No-Hitters pitched against each league for each season")+
+  ylab("National League \nDifference")+
+  xlim(c(1875,2020))
+p2 <- ggplot(League_Overall, aes(x=Year, y=AL_Over))+
+  geom_point(aes(color = cut(AL_Over, c(-10,-.5, 0, 10))))+
+  geom_line(aes(y=0))+
+  scale_color_manual(name = "Season No Hitter Difference", values = c("(-10,-0.5]" = "red", "(-0.5,0]" = "black","(0,10]" = "green"), labels = c("Got No Hit More", "Equal","Threw More No Hitters"))+
+  theme(legend.position = "bottom") +  
+  labs(caption = "Data includes all No Hitters pitched from 1875-2020")+
+  ylab("American League \nDifference")+
+  ylim(c(-6,6))+
+  xlim(c(1875,2020))
+p1/p2
+
+## American vs National League Number of Pitches 
+No_hit %>%
+  filter(!is.na(Pit)) %>%
+ggplot(aes(Pit))+
+  geom_histogram(binwidth=5,aes(y=..density.., fill=League),position='identity', alpha=.5, color="black")+
+  scale_fill_manual(name = "League", values=c("red", "blue", "black"), labels = c("AL", "NL", "Overall"))+
+  geom_density(aes(color=League), size =1)+
+  scale_color_manual(name = "League", values=c("red", "blue", "black"), labels = c("AL", "NL", "Overall"))+
+  theme_classic()+
+  ggtitle("No Hitters Pitched by American League Pitchers Take Longer")+
+  xlab("Pitches per Game")+
+  labs(caption = "Data includes all No Hitters pitched from 1875-2020")+
+  theme(legend.position = c(.9, .9))
+
+## Contact vs Strike out pitchers:
+p1 <- No_hit %>%
+  filter(!is.na(Type)) %>%
+  count(Type, League, Pitches)%>%
+  ggplot(aes(Type, League))+
+  geom_tile(aes(fill=n))+
+  facet_wrap(~Pitches)+
+  scale_fill_continuous_sequential("YlOrRd", name="Number of \n No Hitters" )+
+  theme_classic()+
+  ggtitle("Right Handed Contact Pitchers pitch more No Hitters")+
+  labs(caption = "Data includes all No Hitters pitched from 1875-2020", subtitle = "Contain Pitchers are those where more then 65% of outs are made through \nthe hitter making contact with the ball")+
+  xlab("Pitcher Type")
+p1 
+## Friday May 21st - 2:15 pm
+```
