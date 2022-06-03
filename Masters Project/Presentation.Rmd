@@ -1,0 +1,911 @@
+---
+title: "__Using Regression Modeling to Predict Single Season Total Winning Percentage for Baseball Teams__"
+author: "_Shannon Leiss_"
+date: "March 15, 2022"
+fontsize: 10pt
+output: 
+  beamer_presentation:
+    theme: "Berkeley"
+    colortheme: "seahorse"
+    slide_level: 2
+header-includes:
+- \newcommand{\bsmall}{\begin{small}}
+- \newcommand{\esmall}{\end{small}}
+- \AtBeginEnvironment{table}{\setlength\belowcaptionskip{-10pt}}
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE,fig.pos = 'center')
+setwd("~/OSU/W2022/Project")
+library(tidyverse)
+library(kableExtra)
+library(gridExtra)
+library(Lahman)
+Table.Comparisons <- read.csv("~/OSU/W2022/Project/Table.Comp.csv")
+Cubs <- read.csv("~/OSU/W2022/Project/Data/Cubs.Simulation.Final.Data.csv")
+All.Teams <- read.csv("~/OSU/W2022/Project/Data/All.Teams.Clean.PWWI.csv")
+theme_set(theme_bw())
+```
+
+# Introduction
+
+
+
+## Motivation/Background 
+
+Baseball has many unique elements compared to other sports that provides ample data for analyzing and predicting the game using offensive and defensive elements. 
+
+Since the introduction of Sabermetrics and famous prediction formulas - introduced by Bill James in 1980 - many different attempts have been made to optimize a team's performance in these different areas using statistical modeling
+
+
+
+## Goals of Project
+
+- Using `RetroSheet` and `Teams` Seasonal Baseball data, predicting a team's total single season winning percentage based on offensive and defensive data per season
+
+- Currently, the industry standard for predicting total winning percentage is the Pythagorean Expectation
+$$
+E(Win\%) = \frac{RS^2}{RS^2+RA^2}
+$$
+
+- Where $RS$ stands for a team's overall runs scored and $RA$ stands for a team's overall runs allowed
+
+- Overall goal is to create a complex model that predicts better than the Pythagorean Expectation and a "simple" model that predicts similar to the Pythagorean Expectation 
+
+## Improving on Pythagorean
+
+- Pythagorean predicts within a $\pm 3$ game range using only total runs scored and total runs allowed in a season 
+
+- Ignores the underlying offensive and defensive performance of a team that leads to their total runs scored and allowed
+
+- Performs poorly in different situations due to few terms used
+
+
+## Data Cleaning 
+
+- `RetroSheet` data set has each individual game statistics for all seasons and all teams from 1871 - 2016
+
+- Lahman's `Teams` data set provides each team's overall performance in a variety of variables per season 
+
+- Data sets were combined to create per game, split by home and away games, statistics for each team, each season
+
+
+## Definition of Baseball Terms
+
+\bsmall
+
+- Terms used in the analysis: 
+
+- **Total Win Percentage**, **Home Win Percentage**, **Previous Season Win Percentage**, **Previous Home Win Percentage** 
+
+\centering
+![](TableABS.JPG)
+
+- All variables will be split into per home game and per away game - besides FP - to make seasons with different games played comparable
+
+- All of the above variables were also used to create differential statistics - besides FP. These are the difference between the corresponding offensive and defensive statistics that match for a team. 
+
+\esmall
+
+# Methods
+
+## Linear Regression
+
+- Different Linear Regression models will be considered to predict total winning percentage 
+
+- Models will be compared using AIC, BIC, and Adjusted R$^2$
+
+## Bootstrapping 
+
+- Will be used to find the optimal values of $\hat{\beta_i}$ terms in the selected models
+
+- Randomly splitting the data into training sets of 80% of the seasons will be used to fit the different models with the predictions for these models being fit on the test sets of seasons
+
+- Prediction performance of the models will be compared using the AME of the test seasons, where:
+$$
+AME = \frac{1}{n} \sum_{i=1}^{n=20} |Y_i - \hat{Y_i}|
+$$
+
+
+
+## Penalized Regression
+
+- Since all offensive statistics are highly correlated, the data suffers from multicollinearity 
+  - Multicollinearity does not violate model assumptions and can be ignored when predicting values
+
+- Ridge and Lasso regression will be used to combat multicollinearity issues
+
+
+## Bootstrapping 
+
+- Many different simulations were run with slightly different constraints/tasks 
+  - For linear model comparison, 500 simulations using Cubs data to fit models on Cubs training seasons and predicting on the Cubs test seasons 
+  - For penalized regression comparisons, 100 simulations using predictors decided in linear comparison fit using Cubs training seasons and predictions on Cubs test seasons 
+  - For optimal coefficients for final models, 100 simulations fit on Cubs training seasons, predicting on all Teams all Seasons data to find coefficient values that minimize the AME for all teams all seasons
+
+
+
+## Procedure of Selecting/Fitting Models
+
+- Due to size of data, models were fit using only the Chicago Cubs for the 1920-2016 seasons
+
+- Potential complex models were created based on all available per game splits, offensive focused, defensive focused, and more 
+
+- Simple models were created based on variables with high correlation with total winning percentage 
+
+- 15 models were compared through simulation, 5 models - 2 complex and 3 simple - were chosen for final comparison
+
+## Terms of 5 Comparison Models - Complex Models
+
+\bsmall
+
+ - **Model 1:** *Predicting Total Win Percentage* using the team's *previous season total win percentage, the team's home win percentage, the team's previous season home win percentage,fielding percentage*, along with the team's run, hit, homerun, strikeout, walk, triple, and runners stranded differentials per game - split into home game differentials and away game differentials. This model contained 18 explanatory variables.
+
+- **Model 2:** *Predicting Total Win Percentage* using the team's *previous season total win percentage, the team's home win percentage*, *the team's previous season home win percentage*, *fielding percentage*, along with the teams run, hit, homerun, strikeout, walk, triple, and runners stranded differentials difference between home and away games. This model contained 11 explanatory variables.
+
+
+\esmall
+
+## Terms of 5 Comparison Models - Simple Models
+
+\bsmall
+
+- **Model 3:** *Predicting Total Win Percentage* using a team's overall *fielding percentage* and the team's run differential per game. This model contained 2 explanatory variables. 
+
+- **Model 4:** *Predicting Total Win Percentage* using a team's previous season total win percentage, *fielding percentage*, and the team's run differential during away games. This model contained 3 explanatory variables.
+
+- **Model 5:** *Predicting Total Win Percentage* using a team's previous season total win percentage, *fielding percentage*, and the team's run differential during home games. This model contained 3 explanatory variables.
+
+\esmall
+
+
+## AIC Comparison Table
+
+\bsmall
+
+Table: AIC values for all 5 models fitted on the Cubs training seasons
+
+| Simulation  | Model 1     |  Model 2  |  Model 3  | Model 4    | Model 5      |
+|:-----------:|:-----------:|:---------:|:---------:|:----------:|:------------:|
+| 1| **-396.078**|	-376.184|	-345.567|	-282.172|	-276.980|
+|	2	| **-391.812**|	-376.543|	-346.906|	-292.621|	-286.723|
+ |3	|**-388.984**|	-361.243|	-353.764|	-288.818|	-267.238|
+	|4 |	**-385.018**|	-358.397|	-346.548|	-285.928|	-279.726|
+	|5 |	**-386.840**|	-365.945|	-344.097|	-292.095|	-276.385|
+
+\esmall
+
+## BIC Comparison Table
+
+\bsmall
+
+Table: BIC values for all 5 models fitted on the Cubs training seasons
+
+| Simulation  | Model 1     |  Model 2  |  Model 3  | Model 4    | Model 5      |
+|:-----------:|:-----------:|:---------:|:---------:|:----------:|:------------:|
+|   1         | **-351.546** |  -348.058  | -338.536  |  -272.797   | -267.605    |
+|   2         | -347.280    |  **-348.417**  | -339.875  |  -283.246   | -277.348    |
+|   3         | -344.452    |  -333.117 | **-346.733** |  -279.442  | -257.863  |
+|   4         | **-340.486**  |  -330.272  | -339.517 |  -276.553   | -270.350   |
+|   5         | **-342.308** |  -337.819  | -337.066  |  -282.720   | -267.010    |
+
+\esmall
+
+## Model Summary Table 
+
+
+\bsmall
+
+Table: Summary Table comparing all 5 models and the Pythagorean Expectation
+
+|             | AME       |  Lowest AME  | Lowest AIC | Lowest BIC   | 
+|:-----------:|:-----------:|:---------:|:---------:|:----------:|
+|   Model 1   | 0.0156513 |  79.2%      | 100% |  93%   | 
+|   Model 2   | 0.0180447 |  16.0%      | 0% |  5.2%   | 
+|   Model 3   | 0.0213956 |  3.4%       | 0% |  1.8%  | 
+|   Model 4   | 0.0302909 | 0%          | 0% | 0%  |
+|   Model 5   | 0.0308722 |  0%         | 0%  |  0%   |
+| Pythagorean | 0.0220278 | 1.4%        |           |             |
+\esmall 
+
+## Model Comparison Plot
+
+```{r 5 model scatter, echo=FALSE, fig.cap= "Linear Model AME values on Cubs test seasons compared to the Pythagorean Expectation AME for the test seasons",fig.asp=.5}
+ggplot(Table.Comparisons)+
+  geom_point(aes(mod.1.AME,pyth.AME,col="green"),alpha=.75)+
+  geom_point(aes(mod.5.AME,pyth.AME,col="red"),alpha=.75)+
+  geom_point(aes(mod.8.AME,pyth.AME,col="blue"),alpha=.75)+
+  geom_point(aes(mod.simp.AME,pyth.AME,col="orange"),alpha=.75)+
+  geom_point(aes(mod.simp.1.AME,pyth.AME,col="purple"),alpha=.75)+  
+  xlab("AME of Regression Models")+
+  ylab("AME of Pythagorean")+
+  geom_abline()+
+  scale_color_manual(name = " ",guide="legend",values = c("green"="green", "red"="red", "blue"="blue","orange"="orange", "purple"="purple"), labels = c("Model 1", "Model 2", "Model 3", "Model 4", "Model 5"))+
+  ggtitle("Regression Model Fits Against Pythagorean Model Fits")+
+  theme_bw()
+```
+
+
+## Final Models 
+
+- From comparing models, Model 1 was found to be the best complicated model while Model 3 was found to be the best simple model at predicting total winning percentage
+
+- These models were then simulated again using Cubs data to find the optimal coefficient values
+
+- Simulated models were used to predict all teams winning percentages from the 1920-2016 seasons 
+
+
+```{r,echo=FALSE}
+temp.tab.fit <- read.csv("~/OSU/W2022/Project/temp.tab.fit.csv")
+knitr::kable(tail(temp.tab.fit), align = 'cccccccccccc', col.names = c("Team", "Season", "Total Win %", "Model 1 Fit", "Model 3 Fit", "Pythagorean Fit", "Model 1 Residual", "Model 3 Residual", "Pythagorean Residual"),row.names=FALSE, caption = "Example total winning percentage predictions from simulation, predicted using Model 1, Model 3, and the Pythagorean Expectation", format = 'latex',booktabs=TRUE)%>%kable_styling(latex_options="scale_down")
+```
+
+
+## Optimal Coefficient Value Analysis 
+
+- Looking at the AME for each simulation run, Simulation run 11 had the lowest AME for both models. With both Model 1 AME and Model 3 AME being lower than the Pythagorean Expectation AME 
+
+Table: Comparing Simulation Runs ordered by Model 1 AME
+
+
+| Simulation Run  | Model 1 AME  |  Model 3 AME  | 
+|:-----------------------:|:------------------------:|:-------------------------:|
+| 11                        |0.01477134               |	0.02064096|	
+|75	                        |0.01493020	                |0.02090482	|
+|93	                        |0.01497031	                |0.02067588	|
+|58|	                            0.01498123            |	0.02104307|
+|67|	                            0.01498159	          |0.02075509	|
+
+
+
+
+
+## Model Assumptions 
+
+\bsmall
+
+- Linear Regression model assumptions of linearity, independence of observed values, normally distributed errors, and constant variance of the errors are met for both models  
+
+```{r model checking 11, echo=FALSE,fig.cap="Residuals vs Fitted values plots and Normal QQ-plots for assessing model assumptions for Model 1 and Model 3",fig.asp=.4}
+sim.11 <- read.csv("~/OSU/W2022/Project/Sim.Fit.All.csv")
+mod.1.1 <-ggplot(sim.11, aes(x=Predict.1, y=Resid.1))+
+  geom_point()+
+  geom_hline(yintercept=0, col="red")+
+  xlab("Fitted Values")+
+  ylab(" ")+
+  ggtitle('Simulation Run 11 Model 1')+
+  theme_bw()
+mod.1.2<-ggplot(sim.11,aes(sample=Resid.1))+
+  stat_qq()+
+  stat_qq_line()+
+  ylab(" ")+
+  xlab("theoretical")+
+  ggtitle(' ')+
+  theme_bw()
+
+mod3.1 <-ggplot(sim.11, aes(x=Predict.8, y=Resid.8))+
+  geom_point()+
+  geom_hline(yintercept=0, col="red")+
+  xlab("Fitted Values")+
+  ylab(" ")+
+  ggtitle('Simulation Run 11 Model 3')+
+  theme_bw()
+mod3.2 <- ggplot(sim.11,aes(sample=Resid.8))+
+  stat_qq()+
+  stat_qq_line()+
+  ylab(" ")+
+  xlab("theoretical")+
+  ggtitle(' ')+
+  theme_bw()
+grid.arrange(mod.1.1, mod3.1, mod.1.2, mod3.2, ncol=2,nrow=2, left = "Residual Values")
+```
+
+
+\esmall
+
+# Results 
+
+
+
+
+
+## Ridge and Lasso Regression 
+
+
+
+```{r pen chart, echo=FALSE}
+sum.Pen.Chart <- read.csv("~/OSU/W2022/Project/sum.Pen.Chart.csv")
+small <- rbind(head(round(sum.Pen.Chart,5),3),tail(round(sum.Pen.Chart,5),3))
+rownames(small) <- c()
+knitr::kable(small, align="ccccccc", caption="Lambda values for Ridge and Lasso regression",col.names = c("Model", "Ridge Lambda", "Lasso Lambda", "Linear AME", "Ridge AME", "Lasso AME", "Pythagorean AME"), format = 'latex',booktabs=TRUE) %>% kable_styling(latex_options="scale_down")
+```
+
+
+```{r lambda graph, echo=FALSE,fig.asp=.25,fig.cap="Distribution of lamba values for Ridge and Lasso regression"}
+Lambdas <- read.csv("~/OSU/W2022/Project/Lambdas.csv")
+ggplot(Lambdas, aes(y=as.factor(Model), x=lambda,fill = as.factor(Type)))+
+  geom_boxplot()+
+  scale_fill_manual(name = "Regression Type",guide="legend",values = c("#CC6666", "#9999CC"), labels = c("Lasso", "Ridge"))+
+  ylab("Model")+
+  xlab(expression(paste(lambda, " value")))+
+  ggtitle(expression(paste("Distribution of ",lambda, " values")))+
+  theme_bw()
+```
+
+
+## Ridge and Lasso Regression
+
+\bsmall
+
+- All $\lambda$ values are extremely small, meaning that these models will not differ substantially from the linear models 
+
+- These small $\lambda$ values lead to the predictions being close to the linear model predictions
+
+```{r,echo=FALSE}
+Temp.Tab <- read.csv("~/OSU/W2022/Project/Temp.Tab.csv")
+knitr::kable(round(Temp.Tab,5), align="ccccc", caption="Overall AME for Cubs test seasons using Ridge, Lasso, and Linear regression compared to the overall AME for the Pythagorean Expectation", format = 'latex',booktabs=TRUE) %>% kable_styling(latex_options = "HOLD_position")
+
+```
+
+- Since the $\hat{\beta}$ produced using Ridge and Lasso regression are bias, the Linear regression model will be used
+
+\esmall
+
+## Model Predictions and Pythagorean Comparison 
+
+- Using the predictions for all teams between the 1920-2016 seasons, Model 1 had an overall AME of 0.01575, Model 3 had an overall AME of 0.02099, and the Pythagorean Expectation has an overall AME of 0.02067
+
+- Model 1 predicted better than the Pythagorean Expectation 59.216% of the time
+
+- Model 3 predicted better than the Pythagorean Expectation 48.244% of the time 
+
+
+## Model Performance - Franchise Level 
+
+```{r, echo=FALSE}
+Sim.Run.Franch <- read.csv("~/OSU/W2022/Project/Sim.Run.Franch.csv")
+Values <- Sim.Run.Franch %>% select(-c(franchID,Mod.1.V.Pyth:Mod.8.V.Pyth))%>% round(5)
+Franch <- Sim.Run.Franch%>%  select(franchID)
+Run.Franch <- data.frame(franchID = Franch, Values)
+Run.Franch <- Run.Franch %>% arrange(Mod.1.AME)
+knitr::kable(head(Run.Franch,5), align="cccc", caption="Teams with the lowest AME for Model 1",col.names = c("Team","Model 1 AME", "Model 3 AME", "Pythagorean AME"), format = 'latex',booktabs=TRUE)%>% kable_styling(latex_options = "scale_down")
+```
+
+\bsmall 
+
+Out of 30 Franchises, 11 of them had AME values for both models lower than the Pythagorean AME, with 6 of these teams also having both models predicting better than the Pythagorean more than 50% of the time
+
+\esmall
+
+## Model Perfomance - League and Decade Splits 
+
+\bsmall
+
+- When split by decades, both Model 1 and Model 3 predict modern baseball the best - 2010's, 2000's, and 1990's
+
+```{r, echo=FALSE}
+Sim.Run.Dec.League <- read.csv("~/OSU/W2022/Project/Sim.Run.Dec.League.csv")
+rounded.dec <- Sim.Run.Dec.League %>% select(Mod.1.AME:Pyth.AME) %>% round(5)
+dec.team <- Sim.Run.Dec.League %>% select(decadeID,lgID)
+tabels <- data.frame(dec.team, rounded.dec)
+tabels %>% filter(Mod.1.AME < Pyth.AME & Mod.8.AME < Pyth.AME) %>% knitr::kable(align="ccccc", caption="Decade/League with both models predicting better than the Pythagorean Expectation",col.names = c("Decade","League","Model 1 AME", "Model 3 AME", "Pythagorean AME"), format = 'latex',booktabs=TRUE)%>% kable_styling(latex_options = "scale_down")
+```
+
+
+\esmall
+
+## AME Distributions 
+
+```{r,echo=FALSE,message=FALSE, warning=FALSE, fig.cap="Distribution of AME values for predictions from 1920-2016 season, when predictions are grouped by specific criteria"}
+Sim.Run.Season <- read.csv("~/OSU/W2022/Project/Sim.Run.Season.csv")
+Sim.Run.League <- read.csv("~/OSU/W2022/Project/Sim.Run.League.csv")
+Sim.Run.Dec <- read.csv("~/OSU/W2022/Project/Sim.Run.Dec.csv")
+Sim.Run.Season.League <- read.csv("~/OSU/W2022/Project/Sim.Run.Season.League.csv")
+Sim.Run.Dec.League <- read.csv("~/OSU/W2022/Project/Sim.Run.Dec.League.csv")
+
+get_legend<-function(myggplot){
+  tmp <- ggplot_gtable(ggplot_build(myggplot))
+  leg <- which(sapply(tmp$grobs, function(x) x$name) == "guide-box")
+  legend <- tmp$grobs[[leg]]
+  return(legend)
+}
+
+pf <- ggplot(Sim.Run.Franch)+
+  geom_density(aes(Mod.1.AME,col="green"))+
+  geom_density(aes(Mod.8.AME, col="blue"))+
+  geom_density(aes(Pyth.AME,col="red"))+
+  xlab(" ")+
+  ggtitle("Franchise")+
+  ylab(" ")+
+    scale_color_manual(name = "Legend",guide="legend",values = c("green"="green", "blue"="blue","red"="red"), labels = c("Model 1", "Model 3", "Pythagorean"))+
+  scale_fill_manual(name = "Legend",guide="legend",values = c("green"="green", "blue"="blue","red"="red"), labels = c("Model 1", "Model 3", "Pythagorean"))
+ps <- ggplot(Sim.Run.Season)+
+  geom_density(aes(Mod.1.AME,col="green"))+
+  geom_density(aes(Mod.8.AME, col="blue"))+
+  geom_density(aes(Pyth.AME,col="red"))+
+  xlab(" ")+
+    ylab(" ")+
+  ggtitle("Season")+
+    scale_color_manual(name = "Legend",guide="legend",values = c("green"="green", "blue"="blue","red"="red"), labels = c("Model 1", "Model 3", "Pythagorean"))+
+  scale_fill_manual(name = "Legend",guide="legend",values = c("green"="green", "blue"="blue","red"="red"), labels = c("Model 1", "Model 3", "Pythagorean"))
+pd <- ggplot(Sim.Run.Dec)+
+  geom_density(aes(Mod.1.AME,col="green"))+
+  geom_density(aes(Mod.8.AME, col="blue"))+
+  geom_density(aes(Pyth.AME,col="red"))+
+  xlab(" ")+
+    ylab(" ")+
+  ggtitle("Decade")+
+    scale_color_manual(name = "Legend",guide="legend",values = c("green"="green", "blue"="blue","red"="red"), labels = c("Model 1", "Model 3", "Pythagorean"))+
+  scale_fill_manual(name = "Legend",guide="legend",values = c("green"="green", "blue"="blue","red"="red"), labels = c("Model 1", "Model 3", "Pythagorean"))
+pls <- ggplot(Sim.Run.Season.League)+
+  geom_density(aes(Mod.1.AME,col="green"))+
+  geom_density(aes(Mod.8.AME, col="blue"))+
+  geom_density(aes(Pyth.AME,col="red"))+
+    ylab(" ")+
+  xlab(" ")+
+  ggtitle("Season by League")+
+    scale_color_manual(name = "Legend",guide="legend",values = c("green"="green", "blue"="blue","red"="red"), labels = c("Model 1", "Model 3", "Pythagorean"))+
+  scale_fill_manual(name = "Legend",guide="legend",values = c("green"="green", "blue"="blue","red"="red"), labels = c("Model 1", "Model 3", "Pythagorean"))
+pld <- ggplot(Sim.Run.Dec.League)+
+  geom_density(aes(Mod.1.AME,col="green"))+
+  geom_density(aes(Mod.8.AME, col="blue"))+
+  geom_density(aes(Pyth.AME,col="red"))+
+    ylab(" ")+
+  xlab(" ")+
+  ggtitle("Decade by League")+
+    scale_color_manual(name = "Legend",guide="legend",values = c("green"="green", "blue"="blue","red"="red"), labels = c("Model 1", "Model 3", "Pythagorean"))+
+  scale_fill_manual(name = "Legend",guide="legend",values = c("green"="green", "blue"="blue","red"="red"), labels = c("Model 1", "Model 3", "Pythagorean"))
+legend <- get_legend(pld)
+pf <- pf+theme(legend.position = "none") 
+ps<- ps +theme(legend.position = "none") 
+pd<- pd +theme(legend.position = "none") 
+pls <- pls+theme(legend.position = "none") 
+pld <- pld+theme(legend.position = "none")    
+
+grid.arrange(pf,ps,pd,pls,pld, legend,ncol=3, left="Count", bottom = "Model AME")
+```
+
+
+## Applications of Model
+
+- Model 1 predicts consistently better than the Pythagorean Expectation, with Model 3 predicting similar to the Pythagorean Expectation
+
+- Using terms other than runs scored and runs against allows teams to find specific areas of their team's that need to be improved to achieve a specific predicted winning percentage 
+
+- Of all the possible predictors, a team's fielding percentage had a surprisingly high impact on their overall winning percentage, as well a team's run differential for away games 
+
+- Model 1 also predicted a team's finish within their division better than the Pythagorean Expectation
+
+
+## Further Work
+
+- Further testing of the model on mid-season data could be done to test the mid-season prediction against the end of season total winning percentage
+
+- It could also be examined how many games a team must play in a season before the models have an AME around or below 0.02, as the earlier into the season an accurate prediction can be made the better
+
+- Additional terms, such as difficulty of schedule and ballpark factors, could be investigated to be built into the models
+
+
+# Appendix Plots & Tables
+
+## Simulation 11 Against Other Coefficient Values - Model 1 
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+Split_Data <- function(x){
+  n <- nrow(x)
+  train <<- floor(n*.8)
+  training <<- sample(nrow(x), train, replace = FALSE)
+  training.set <<- x[training,]
+  test.set <<- x[-training,]
+}
+Team.Model.Comparison.Prediction <- function(x,y,n = 100){
+  library(tidyverse)
+  set.seed(101214)
+  x.sub <<- x
+  tests <<- rerun(n,Split_Data(x.sub)$yearID)
+  years <- seq(1920,2016,1)
+  splits <- tibble(training.years = NA, test.years = NA,mod.1.coefs = NA,mod.1.signif=NA,mod.1.AIC=NA, mod.1.BIC=NA,mod.1.R2 = NA,mod.1.AME.test = NA,mod.1.AME.All =NA,mod.8.coefs = NA,mod.8.signif=NA,mod.8.AIC=NA, mod.8.BIC=NA,mod.8.R2 = NA,mod.8.AME.test = NA,mod.8.AME.All =NA,pyth.AME.test = NA,pyth.AME.All=NA,All.Teams.Fits=NA,Sim.Run =NA,.rows = n)
+  for(i in 1:n){
+    training <- setdiff(years,tests[[i]])
+    splits$training.years[i] <- list(training)
+    splits$test.years[i] <- list(tests[[i]])
+    training.set <- x.sub %>% subset(yearID %in% training)
+    mod.1 <- lm(data=training.set, Total_Win_Per ~ Home_Win_Per+ Previous_Season_Total_Win_Per+Previous_Home_Win_Per+FP+Run_Dif_HG+Run_Dif_AG+Hit_Dif_HG+Hit_Dif_AG+HR_Dif_HG+HR_dif_AG+SO_Dif_HG+SO_Dif_AG+BB_Dif_HG+BB_Dif_AG+RNS_Dif_HG+RNS_Dif_AG+Trip_Dif_HG+Trip_Dif_AG-1)
+    splits$mod.1.coefs[i] <- list(mod.1$coefficients) 
+    splits$mod.1.signif[i] <- list(summary(mod.1)$coefficients[,4] < 0.05)
+    splits$mod.1.AIC[i] <- AIC(mod.1)
+    splits$mod.1.BIC[i] <- BIC(mod.1)
+    splits$mod.1.R2[i] <- summary(mod.1)$adj.r.squared
+    fitting <- x.sub %>% subset(yearID %in% tests[[i]])%>% select(Total_Win_Per,Home_Win_Per, Previous_Season_Total_Win_Per,Previous_Home_Win_Per,FP,Run_Dif_HG,Run_Dif_AG,Hit_Dif_HG,Hit_Dif_AG,HR_Dif_HG,HR_dif_AG,SO_Dif_HG,SO_Dif_AG,BB_Dif_HG,BB_Dif_AG,RNS_Dif_HG,RNS_Dif_AG,Trip_Dif_HG,Trip_Dif_AG)
+    predict.1 <- predict(mod.1, newdata=fitting[,-1])
+    fitting <- fitting %>% select(Total_Win_Per) %>% mutate(Predict = predict.1, Resid = Total_Win_Per - Predict)
+    AME <- mean(abs(fitting$Resid))
+    splits$mod.1.AME.test[i] <- AME
+    y.sub <- y %>%select(franchID,yearID,Total_Win_Per,Home_Win_Per, Previous_Season_Total_Win_Per,Previous_Home_Win_Per,FP,Run_Dif_HG,Run_Dif_AG,Hit_Dif_HG,Hit_Dif_AG,HR_Dif_HG,HR_dif_AG,SO_Dif_HG,SO_Dif_AG,BB_Dif_HG,BB_Dif_AG,RNS_Dif_HG,RNS_Dif_AG,Trip_Dif_HG,Trip_Dif_AG)
+    Predict.1 <- predict(mod.1,newdata=y.sub[,-c(1,2,3)])
+    mod.8 <- lm(data=training.set, Total_Win_Per ~ FP+I((Run_Dif_HG+Run_Dif_AG)/2)-1)
+    splits$mod.8.coefs[i] <- list(mod.8$coefficients) 
+    splits$mod.8.signif[i] <- list(summary(mod.8)$coefficients[,4] < 0.05)
+    splits$mod.8.AIC[i] <- AIC(mod.8)
+    splits$mod.8.BIC[i] <- BIC(mod.8)
+    splits$mod.8.R2[i] <- summary(mod.8)$adj.r.squared
+    fitting <- x.sub %>% subset(yearID %in% tests[[i]])%>% select(Total_Win_Per,FP,Run_Dif_HG,Run_Dif_AG)
+    predict.8 <- predict(mod.8, newdata=fitting[,-1])
+    fitting <- fitting %>% select(Total_Win_Per) %>% mutate(Predict = predict.8, Resid = Total_Win_Per - Predict)
+    AME <- mean(abs(fitting$Resid))
+    splits$mod.8.AME.test[i] <- AME
+    y.sub <- y %>%select(franchID,yearID,Total_Win_Per,FP,Run_Dif_HG,Run_Dif_AG)
+    Predict.8 <- predict(mod.8,newdata=y.sub[,-c(1,2,3)])
+    pyth <- x.sub %>% subset(yearID %in% tests[[i]]) %>% mutate(Predict = (RS^2)/(RS^2+RA^2), Resid = Total_Win_Per - Predict)
+    pyth.AME <- mean(abs(pyth$Resid))
+    splits$pyth.AME.test[i] <- pyth.AME
+    fits <-y %>% transmute(franchID, yearID, Total_Win_Per, Predict.1 =Predict.1, Predict.8 = Predict.8, Predict.Pyth =  (RS^2)/(RS^2+RA^2), Resid.1 = Total_Win_Per -Predict.1, Resid.8 = Total_Win_Per - Predict.8, Resid.Pyth = Total_Win_Per - Predict.Pyth, Sim.Run = i)
+    splits$All.Teams.Fits[i] <- list(fits)
+    splits$mod.1.AME.All[i] <- mean(abs(fits$Resid.1))
+    splits$mod.8.AME.All[i] <- mean(abs(fits$Resid.8))
+    splits$pyth.AME.All[i] <- mean(abs(fits$Resid.Pyth))
+    splits$Sim.Run[i] <- i
+  }
+  global.splits.predictions <<-splits
+  return(splits)
+}
+
+Predicting.Model.Simulation <- Team.Model.Comparison.Prediction(Cubs,All.Teams)
+Sim.Fit.All <- global.splits.predictions$All.Teams.Fits
+x <- bind_rows(Sim.Fit.All[[1]], Sim.Fit.All[[2]])
+for(i in 3:100){
+  temp <- Sim.Fit.All[[i]]
+  x <- bind_rows(x,temp)
+}
+Sim.Fit.Team.All <- x
+coefs <- global.splits.predictions %>% select(mod.1.coefs,mod.8.coefs,Sim.Run)
+Simulation.Fit.All <- inner_join(Sim.Fit.Team.All,coefs, by="Sim.Run")
+sim.11 <- Simulation.Fit.All %>% filter(Sim.Run == 11) %>% select(-c(mod.1.coefs:mod.8.coefs))
+
+write.csv(sim.11,"~/OSU/W2022/Project\\Sim.Fit.All.csv", row.names = FALSE)
+Round.vars <- Simulation.Fit.All %>% select(Total_Win_Per:Resid.Pyth) %>% round(4)
+temp.tab.fit <- Round.vars %>% mutate(franchID = Simulation.Fit.All$franchID, yearID = Simulation.Fit.All$yearID, Sim.Run = Simulation.Fit.All$Sim.Run)
+temp.tab.fit <- temp.tab.fit %>% select(franchID, yearID,Total_Win_Per:Resid.Pyth)
+write.csv(temp.tab.fit,"~/OSU/W2022/Project\\temp.tab.fit.csv", row.names = FALSE)
+
+## The distribution of the values of the coefficients produced in each run of the simulation for Model 1 and Model 3 are as follows:
+## Model 1 Comparison
+model1.coefs <- data.frame(matrix(unlist(global.splits.predictions$mod.1.coefs), nrow=length(global.splits.predictions$mod.1.coefs), byrow=TRUE))
+colnames(model1.coefs) <- c('Home_Win_Per', 'Previous_Season_Total_Win_Per','Previous_Home_Win_Per','FP','Run_Dif_HG','Run_Dif_AG','Hit_Dif_HG','Hit_Dif_AG','HR_Dif_HG','HR_dif_AG','SO_Dif_HG','SO_Dif_AG','BB_Dif_HG','BB_Dif_AG','RNS_Dif_HG','RNS_Dif_AG','Trip_Dif_HG','Trip_Dif_AG')
+avg.mod.1.coefs <- model1.coefs %>% colMeans()
+Model.1.Coefs <- data.frame(Simulation.11 = unlist(coefs[11,1]), Average = avg.mod.1.coefs)
+rownames(Model.1.Coefs) <- c('Home_Win_Per', 'Previous_Season_Total_Win_Per','Previous_Home_Win_Per','FP','Run_Dif_HG','Run_Dif_AG','Hit_Dif_HG','Hit_Dif_AG','HR_Dif_HG','HR_dif_AG','SO_Dif_HG','SO_Dif_AG','BB_Dif_HG','BB_Dif_AG','RNS_Dif_HG','RNS_Dif_AG','Trip_Dif_HG','Trip_Dif_AG')
+
+model1.coefs.Cubs <- data.frame(matrix(unlist(global.splits.predictions$mod.1.coefs), nrow=length(global.splits.predictions$mod.1.coefs), byrow=TRUE))
+colnames(model1.coefs.Cubs) <- c('Home_Win_Per', 'Previous_Season_Total_Win_Per','Previous_Home_Win_Per','FP','Run_Dif_HG','Run_Dif_AG','Hit_Dif_HG','Hit_Dif_AG','HR_Dif_HG','HR_dif_AG','SO_Dif_HG','SO_Dif_AG','BB_Dif_HG','BB_Dif_AG','RNS_Dif_HG','RNS_Dif_AG','Trip_Dif_HG','Trip_Dif_AG')
+avg.mod.1.coefs.Cubs <- model1.coefs.Cubs %>% colMeans()
+avg.mod.1.Cubs <- as.matrix(avg.mod.1.coefs.Cubs)
+## Parameter Significance
+mod.1.sig.Cubs<- as.data.frame(as.data.frame(global.splits.predictions$mod.1.signif)%>% rowMeans())
+colnames(mod.1.sig.Cubs) <- c("Percent")
+titles <- c('Home Win %', 'Previous Season Total Win %','Previous Home Win %','FP','Run Differential Home','Run Differential Away','Hit Differential Home','Hit Differential Away','HR Differential Home','HR Differential Away','SO Differential Home','SO Differential Away','BB Differential Home','BB Differential Away','RNS Differential Home','RNS Differential Away','Triple Differential Home','Triple Differential Away')
+
+p1 <- ggplot(model1.coefs.Cubs, aes(x=model1.coefs.Cubs[,1]))+
+  geom_histogram(fill="lightblue", color="black")+
+  ggtitle(titles[1])+
+  annotate("text",  x=Inf, y = Inf, label = paste("Significance:",mod.1.sig.Cubs[1,]*100,"% of Simulations"), vjust=1, hjust=1,size = 2)+
+  ylim(c(0,13))+
+  geom_segment(aes(x=Model.1.Coefs$Simulation.11[1],xend=Model.1.Coefs$Simulation.11[1],y=0, yend=10), col="red")+
+  ylab(" ")+
+  xlab(" ")+
+  theme(plot.title = element_text(size=5))
+p2 <- ggplot(model1.coefs.Cubs, aes(x=model1.coefs.Cubs[,2]))+
+  geom_histogram(fill="lightblue", color="black")+
+  ggtitle(titles[2])+
+  annotate("text",  x=Inf, y = Inf, label = paste("Significance:",mod.1.sig.Cubs[2,]*100,"% of Simulations"), vjust=1, hjust=1,size = 2)+
+  ylim(c(0,13))+
+  geom_segment(aes(x=Model.1.Coefs$Simulation.11[2],xend=Model.1.Coefs$Simulation.11[2],y=0, yend=10), col="red")+
+  ylab(" ")+
+  xlab(" ")+
+  theme(plot.title = element_text(size=5))
+p3 <- ggplot(model1.coefs.Cubs, aes(x=model1.coefs.Cubs[,3]))+
+    geom_histogram(fill="lightblue", color="black")+
+  ggtitle(titles[3])+
+  annotate("text",  x=Inf, y = Inf, label = paste("Significance:",mod.1.sig.Cubs[3,]*100,"% of Simulations"), vjust=1, hjust=1,size = 2)+
+  ylim(c(0,13))+
+  geom_segment(aes(x=Model.1.Coefs$Simulation.11[3],xend=Model.1.Coefs$Simulation.11[3],y=0, yend=10), col="red")+
+  ylab(" ")+
+  xlab(" ")+
+  theme(plot.title = element_text(size=5))
+p4 <- ggplot(model1.coefs.Cubs, aes(x=model1.coefs.Cubs[,4]))+
+    geom_histogram(fill="lightblue", color="black")+
+  ggtitle(titles[4])+
+  annotate("text",  x=Inf, y = Inf, label = paste("Significance:",mod.1.sig.Cubs[4,]*100,"% of Simulations"), vjust=1, hjust=1,size = 2)+
+  ylim(c(0,13))+
+  geom_segment(aes(x=Model.1.Coefs$Simulation.11[4],xend=Model.1.Coefs$Simulation.11[4],y=0, yend=10), col="red")+
+  ylab(" ")+
+  xlab(" ")+
+  theme(plot.title = element_text(size=5))
+p5 <- ggplot(model1.coefs.Cubs, aes(x=model1.coefs.Cubs[,5]))+
+    geom_histogram(fill="lightblue", color="black")+
+  ggtitle(titles[5])+
+  annotate("text",  x=Inf, y = Inf, label = paste("Significance:",mod.1.sig.Cubs[5,]*100,"% of Simulations"), vjust=1, hjust=1,size = 2)+
+  ylim(c(0,13))+
+  geom_segment(aes(x=Model.1.Coefs$Simulation.11[5],xend=Model.1.Coefs$Simulation.11[5],y=0, yend=10), col="red")+
+  ylab(" ")+
+  xlab(" ")+
+  theme(plot.title = element_text(size=5))
+p6 <- ggplot(model1.coefs.Cubs, aes(x=model1.coefs.Cubs[,6]))+
+    geom_histogram(fill="lightblue", color="black")+
+  ggtitle(titles[6])+
+  annotate("text",  x=Inf, y = Inf, label = paste("Significance:",mod.1.sig.Cubs[6,]*100,"% of Simulations"), vjust=1, hjust=1,size = 2)+
+  ylim(c(0,13))+
+  geom_segment(aes(x=Model.1.Coefs$Simulation.11[6],xend=Model.1.Coefs$Simulation.11[6],y=0, yend=10), col="red")+
+  ylab(" ")+
+  xlab(" ")+
+  theme(plot.title = element_text(size=5))
+p7 <- ggplot(model1.coefs.Cubs, aes(x=model1.coefs.Cubs[,7]))+
+    geom_histogram(fill="lightblue", color="black")+
+  ggtitle(titles[7])+
+  annotate("text",  x=Inf, y = Inf, label = paste("Significance:",mod.1.sig.Cubs[7,]*100,"% of Simulations"), vjust=1, hjust=1,size = 2)+
+  ylim(c(0,13))+
+  geom_segment(aes(x=Model.1.Coefs$Simulation.11[7],xend=Model.1.Coefs$Simulation.11[7],y=0, yend=10), col="red")+
+  ylab(" ")+
+  xlab(" ")+
+  theme(plot.title = element_text(size=5))
+p8 <- ggplot(model1.coefs.Cubs, aes(x=model1.coefs.Cubs[,8]))+
+    geom_histogram(fill="lightblue", color="black")+
+  ggtitle(titles[8])+
+  annotate("text",  x=Inf, y = Inf, label = paste("Significance:",mod.1.sig.Cubs[8,]*100,"% of Simulations"), vjust=1, hjust=1,size = 2)+
+  ylim(c(0,13))+
+  geom_segment(aes(x=Model.1.Coefs$Simulation.11[8],xend=Model.1.Coefs$Simulation.11[8],y=0, yend=10), col="red")+
+  ylab(" ")+
+  xlab(" ")+
+  theme(plot.title = element_text(size=5))
+p9 <- ggplot(model1.coefs.Cubs, aes(x=model1.coefs.Cubs[,9]))+
+    geom_histogram(fill="lightblue", color="black")+
+  ggtitle(titles[9])+
+  annotate("text",  x=Inf, y = Inf, label = paste("Significance:",mod.1.sig.Cubs[9,]*100,"% of Simulations"), vjust=1, hjust=1,size = 2)+
+  ylim(c(0,13))+
+  geom_segment(aes(x=Model.1.Coefs$Simulation.11[9],xend=Model.1.Coefs$Simulation.11[9],y=0, yend=10), col="red")+
+  ylab(" ")+
+  xlab(" ")+
+  theme(plot.title = element_text(size=5))
+p10 <- ggplot(model1.coefs.Cubs, aes(x=model1.coefs.Cubs[,10]))+
+    geom_histogram(fill="lightblue", color="black")+
+  ggtitle(titles[10])+
+  annotate("text",  x=Inf, y = Inf, label = paste("Significance:",mod.1.sig.Cubs[10,]*100,"% of Simulations"), vjust=1, hjust=1,size = 2)+
+  ylim(c(0,13))+
+  geom_segment(aes(x=Model.1.Coefs$Simulation.11[10],xend=Model.1.Coefs$Simulation.11[10],y=0, yend=10), col="red")+
+  ylab(" ")+
+  xlab(" ")+
+  theme(plot.title = element_text(size=5))
+p11 <- ggplot(model1.coefs.Cubs, aes(x=model1.coefs.Cubs[,11]))+
+    geom_histogram(fill="lightblue", color="black")+
+  ggtitle(titles[11])+
+  annotate("text",  x=Inf, y = Inf, label = paste("Significance:",mod.1.sig.Cubs[11,]*100,"% of Simulations"), vjust=1, hjust=1,size = 2)+
+  ylim(c(0,13))+
+  geom_segment(aes(x=Model.1.Coefs$Simulation.11[11],xend=Model.1.Coefs$Simulation.11[11],y=0, yend=10), col="red")+
+  ylab(" ")+
+  xlab(" ")+
+  theme(plot.title = element_text(size=5))
+p12 <- ggplot(model1.coefs.Cubs, aes(x=model1.coefs.Cubs[,12]))+
+    geom_histogram(fill="lightblue", color="black")+
+  ggtitle(titles[12])+
+  annotate("text",  x=Inf, y = Inf, label = paste("Significance:",mod.1.sig.Cubs[12,]*100,"% of Simulations"), vjust=1, hjust=1,size = 2)+
+  ylim(c(0,13))+
+  geom_segment(aes(x=Model.1.Coefs$Simulation.11[12],xend=Model.1.Coefs$Simulation.11[12],y=0, yend=10), col="red")+
+  ylab(" ")+
+  xlab(" ")+
+  theme(plot.title = element_text(size=5))
+p13 <- ggplot(model1.coefs.Cubs, aes(x=model1.coefs.Cubs[,13]))+
+    geom_histogram(fill="lightblue", color="black")+
+  ggtitle(titles[13])+
+  annotate("text",  x=Inf, y = Inf, label = paste("Significance:",mod.1.sig.Cubs[13,]*100,"% of Simulations"), vjust=1, hjust=1,size = 2)+
+  ylim(c(0,13))+
+  geom_segment(aes(x=Model.1.Coefs$Simulation.11[13],xend=Model.1.Coefs$Simulation.11[13],y=0, yend=10), col="red")+
+  ylab(" ")+
+  xlab(" ")+
+  theme(plot.title = element_text(size=5))
+p14 <- ggplot(model1.coefs.Cubs, aes(x=model1.coefs.Cubs[,14]))+
+    geom_histogram(fill="lightblue", color="black")+
+  ggtitle(titles[14])+
+  annotate("text",  x=Inf, y = Inf, label = paste("Significance:",mod.1.sig.Cubs[14,]*100,"% of Simulations"), vjust=1, hjust=1,size = 2)+
+  ylim(c(0,13))+
+  geom_segment(aes(x=Model.1.Coefs$Simulation.11[14],xend=Model.1.Coefs$Simulation.11[14],y=0, yend=10), col="red")+
+  ylab(" ")+
+  xlab(" ")+
+  theme(plot.title = element_text(size=5))
+p15 <- ggplot(model1.coefs.Cubs, aes(x=model1.coefs.Cubs[,15]))+
+    geom_histogram(fill="lightblue", color="black")+
+  ggtitle(titles[15])+
+  annotate("text",  x=Inf, y = Inf, label = paste("Significance:",mod.1.sig.Cubs[15,]*100,"% of Simulations"), vjust=1, hjust=1,size = 2)+
+  ylim(c(0,13))+
+  geom_segment(aes(x=Model.1.Coefs$Simulation.11[15],xend=Model.1.Coefs$Simulation.11[15],y=0, yend=10), col="red")+
+  ylab(" ")+
+  xlab(" ")+
+  theme(plot.title = element_text(size=5))
+p16 <- ggplot(model1.coefs.Cubs, aes(x=model1.coefs.Cubs[,16]))+
+    geom_histogram(fill="lightblue", color="black")+
+  ggtitle(titles[16])+
+  annotate("text",  x=Inf, y = Inf, label = paste("Significance:",mod.1.sig.Cubs[16,]*100,"% of Simulations"), vjust=1, hjust=1,size = 2)+
+  ylim(c(0,13))+
+  geom_segment(aes(x=Model.1.Coefs$Simulation.11[16],xend=Model.1.Coefs$Simulation.11[16],y=0, yend=10), col="red")+
+  ylab(" ")+
+  xlab(" ")+
+  theme(plot.title = element_text(size=5))
+p17 <- ggplot(model1.coefs.Cubs, aes(x=model1.coefs.Cubs[,17]))+
+    geom_histogram(fill="lightblue", color="black")+
+  ggtitle(titles[17])+
+  annotate("text",  x=Inf, y = Inf, label = paste("Significance:",mod.1.sig.Cubs[17,]*100,"% of Simulations"), vjust=1, hjust=1,size = 2)+
+  ylim(c(0,13))+
+  geom_segment(aes(x=Model.1.Coefs$Simulation.11[17],xend=Model.1.Coefs$Simulation.11[17],y=0, yend=10), col="red")+
+  ylab(" ")+
+  xlab(" ")+
+  theme(plot.title = element_text(size=5))
+p18 <- ggplot(model1.coefs.Cubs, aes(x=model1.coefs.Cubs[,18]))+
+    geom_histogram(fill="lightblue", color="black")+
+  ggtitle(titles[18])+
+  annotate("text",  x=Inf, y = Inf, label = paste("Significance:",mod.1.sig.Cubs[18,]*100,"% of Simulations"), vjust=1, hjust=1,size = 2)+
+  ylim(c(0,13))+
+  geom_segment(aes(x=Model.1.Coefs$Simulation.11[18],xend=Model.1.Coefs$Simulation.11[18],y=0, yend=10), col="red")+
+  ylab(" ")+
+  xlab(" ")+
+  theme(plot.title = element_text(size=5))
+
+
+##grid.arrange(p1,p2,p3,p4,p5,p6,p7,p8,p9, ncol=3)
+## grid.arrange(p10,p11,p12,p13,p14,p15,p16,p17,p18, ncol=3)
+
+
+grid.arrange(p1,p2,p3,p4,p5,p6,p7,p8,p9,p10,p11,p12,p13,p14,p15,p16,p17,p18, ncol=3, left="Count", top = "Model 1")
+
+```
+
+
+## Simulation 11 Against Other Coefficients - Model 3
+
+```{r model 8 checking, echo=FALSE, message=FALSE, error=FALSE}
+##Model 8
+## Model 8 Comparison
+model8.coef <- data.frame(matrix(unlist(global.splits.predictions$mod.8.coefs), nrow=length(global.splits.predictions$mod.8.coefs), byrow=TRUE))
+avg.mod.8.coef <- model8.coef %>% colMeans()
+Model.8.Coefs <- data.frame(Simulation.11 = unlist(coefs[11,2]),Average = avg.mod.8.coef)
+rownames(Model.8.Coefs) <- c("FP", "Run Dif Per Game")
+model8.coef.Cubs <- data.frame(matrix(unlist(global.splits.predictions$mod.8.coefs), nrow=length(global.splits.predictions$mod.8.coefs), byrow=TRUE))
+avg.mod.8.coef.Cubs <- model8.coef.Cubs %>% colMeans()
+avg.mod.8.Cubs <- as.matrix(avg.mod.8.coef.Cubs)
+## Parameter Significance
+mod.8.sig.Cubs<- as.data.frame(as.data.frame(global.splits.predictions$mod.8.signif)%>% rowMeans())
+colnames(mod.8.sig.Cubs) <- c("Percent Times Significant")
+## Distribtion of coefficients 
+colnames(model8.coef.Cubs) <- c("FP", "Run Differential Per Game")
+titles <- colnames(model8.coef.Cubs)
+
+p1 <- ggplot(model8.coef.Cubs, aes(x=model8.coef.Cubs[,1]))+
+    geom_histogram(fill="lightblue", color="black")+
+  ggtitle(titles[1])+
+  annotate("text",  x=Inf, y = Inf, label = paste("Significance:",mod.8.sig.Cubs[1,]*100,"% of Simulations"), vjust=1, hjust=1,size = 5)+
+  ylim(c(0,13))+
+  geom_segment(aes(x=Model.8.Coefs$Simulation.11[1],xend=Model.8.Coefs$Simulation.11[1],y=0, yend=10), col="red")+
+  ylab(" ")+
+  xlab(" ")+
+  theme(plot.title = element_text(size=10))
+
+p2 <- ggplot(model8.coef.Cubs, aes(x=model8.coef.Cubs[,2]))+
+    geom_histogram(fill="lightblue", color="black")+
+  ggtitle(titles[2])+
+  ylim(c(0,13))+
+  annotate("text",  x=Inf, y = Inf, label = paste("Significance:",mod.8.sig.Cubs[2,]*100,"% of Simulations"), vjust=1, hjust=1,size = 5)+
+  geom_segment(aes(x=Model.8.Coefs$Simulation.11[2],xend=Model.8.Coefs$Simulation.11[2],y=0, yend=10), col="red")+
+  ylab(" ")+
+  xlab(" ")+
+  theme(plot.title = element_text(size=10))
+
+grid.arrange(p1,p2, ncol=2, left="Count", top = "Model 3")
+
+```
+
+
+## Simulation 11 Coefficient Values Tables - Model 1 
+
+
+```{r}
+knitr::kable(t(Model.1.Coefs[1:6,]), align='cccccc', caption = "Coefficient Values for Model 1", format = 'latex',booktabs=TRUE) %>% kable_styling(latex_options = "scale_down")
+knitr::kable(t(Model.1.Coefs[7:12,]), align='cccccc', format = 'latex',booktabs=TRUE) %>% kable_styling(latex_options = "scale_down")
+knitr::kable(t(Model.1.Coefs[13:18,]), align='cccccc', format = 'latex',booktabs=TRUE) %>% kable_styling(latex_options = "scale_down")
+
+```
+
+
+## Simulation 11 Coefficient Values Tables - Model 3
+
+```{r, echo=FALSE}
+knitr::kable(Model.8.Coefs, align='cc', col.names = c("Simulation 11", "Average"), caption = "Coefficient Values for Model 3", format = 'latex',booktabs=TRUE) %>% kable_styling(latex_options = "scale_down")
+```
+
+
+## Analysis: Simulation 11 against Averaged Coefficients 
+
+```{r comp the model versions, echo=FALSE,message=FALSE,warning=FALSE,fig.cap="Distribution of residual values for the predicted total winning percentage of all teams from the 1920-2016 seasons for Optimal Simulation run and the Averaged Coefficient values", fig.asp=.5}
+leagues <- All.Teams %>% select(franchID, yearID, lgID)
+Simulation.Fit.All<-inner_join(Simulation.Fit.All, leagues, by = c("franchID", "yearID"))
+Simulation.Fit.All<-Simulation.Fit.All %>% mutate(decadeID = floor(yearID/10)*10)
+
+Sims.11.Predictions <- Simulation.Fit.All %>% filter(Sim.Run == 11) %>% select(-c(mod.1.coefs,mod.8.coefs))
+
+Teams.Pred.1 <- All.Teams %>% select(franchID,lgID,Total_Win_Per,yearID,Home_Win_Per, Previous_Season_Total_Win_Per,Previous_Home_Win_Per,FP,Run_Dif_HG,Run_Dif_AG,Hit_Dif_HG,Hit_Dif_AG,HR_Dif_HG,HR_dif_AG,SO_Dif_HG,SO_Dif_AG,BB_Dif_HG,BB_Dif_AG,RNS_Dif_HG,RNS_Dif_AG,Trip_Dif_HG,Trip_Dif_AG,RS,RA)
+Predictions.Mod.1.Avg <- as.matrix(Teams.Pred.1[,-c(1,2,3,4,23,24)])%*%as.matrix(avg.mod.1.coefs)
+Predicts.Mod.1.Avg <- Teams.Pred.1 %>% select(franchID,lgID, yearID, Total_Win_Per,RS,RA) %>% mutate(Predictions = Predictions.Mod.1.Avg, Residuals = Total_Win_Per - Predictions, Pyth = (RS^2)/(RS^2+RA^2), Pyth.Resid = Total_Win_Per - Pyth) %>% select(-c(RS,RA))
+
+Teams.Pred.8 <- All.Teams %>%select(franchID,lgID,yearID,Total_Win_Per,FP,Run_Dif_HG,Run_Dif_AG,RS,RA)
+Teams.Pred.8 <- Teams.Pred.8%>% mutate(Run_Dif = ((Run_Dif_HG+Run_Dif_AG)/2)) %>% select(franchID, lgID,yearID,Total_Win_Per, FP, Run_Dif,RS,RA)
+Predictions.Mod.8<- as.matrix(Teams.Pred.8[,-c(1,2,3,4,7,8)])%*%as.matrix(avg.mod.8.coef)
+Predicts.Mod.8.Avg<- Teams.Pred.8 %>% select(franchID, lgID,yearID, Total_Win_Per,RS,RA) %>% mutate(Predictions = Predictions.Mod.8, Residuals = Total_Win_Per - Predictions, Pyth = (RS^2)/(RS^2+RA^2), Pyth.Resid = Total_Win_Per - Pyth) %>% select(-c(RS,RA))
+
+Avg_Predictions <- data.frame(franchID = Predicts.Mod.1.Avg$franchID, yearID = Predicts.Mod.1.Avg$yearID, Total_Win_Per = Predicts.Mod.1.Avg$Total_Win_Per, Predict.1.Avg = Predicts.Mod.1.Avg$Predictions, Predict.8.Avg = Predicts.Mod.8.Avg$Predictions, Resid.1.Avg = Predicts.Mod.1.Avg$Residuals, Resid.8.Avg = Predicts.Mod.8.Avg$Residuals, lgID = Predicts.Mod.1.Avg$lgID)
+
+Model.Prediction.Comparison <- inner_join(Sims.11.Predictions, Avg_Predictions, by= c("yearID", "franchID", "Total_Win_Per", "lgID"))
+Model.Prediction.Comparison <- Model.Prediction.Comparison %>% select(decadeID,yearID,franchID,lgID,Total_Win_Per, Predict.1,Predict.1.Avg,Predict.8,Predict.8.Avg,Predict.Pyth,Resid.1, Resid.1.Avg, Resid.8, Resid.8.Avg, Resid.Pyth)
+
+Model.1.Preds <- Model.Prediction.Comparison %>% transmute(Model = 1, Simulation = Resid.1, Averages = Resid.1.Avg)
+Model.3.Preds <- Model.Prediction.Comparison %>% transmute(Model = 3, Simulation = Resid.8, Averages = Resid.8.Avg)
+
+Mods.Preds.Comps <- bind_rows(Model.1.Preds, Model.3.Preds)
+Mods.Preds.Comps <- Mods.Preds.Comps %>% pivot_longer(!Model, names_to = "Coefs", values_to = "Residuals")
+
+ggplot(Mods.Preds.Comps)+
+    geom_density(aes(Residuals,col=as.factor(Model), linetype = Coefs))+
+    xlab("Residuals")+
+    ggtitle("Optimal Simulation versus Averaged Coefficients")+
+    annotate("text",  x=Inf, y = Inf, label = paste("Simulation 11 AME:", round(mean(abs(Model.Prediction.Comparison$Resid.1)),4)), vjust=1, hjust=1, col="green")+
+    annotate("text",  x=Inf, y = Inf, label = paste("Simulation 11 AME:", round(mean(abs(Model.Prediction.Comparison$Resid.8)),4)), vjust=2, hjust=1, col="blue")+
+    annotate("text",  x=Inf, y = Inf, label = paste("Average Coefficients AME:", round(mean(abs(Model.Prediction.Comparison$Resid.1.Avg)),4)), vjust=3, hjust=1, col="green")+
+    annotate("text",  x=Inf, y = Inf, label = paste("Average Coefficients AME:", round(mean(abs(Model.Prediction.Comparison$Resid.8.Avg)),4)), vjust=4, hjust=1, col="blue")+
+    ylab("Count")+
+    xlim(c(-0.06,0.1))+
+    ylim(c(0,25))+
+    scale_color_manual(name = "Models:", guide = "legend", values=c("green","blue"), labels=c("Model 1", "Model 3"))+
+    scale_fill_manual(name = "Models:", guide = "legend", values=c("green"="green","blue"="blue"), labels=c("Model 1", "Model 3"))+
+    scale_linetype_manual(name = "Simulation Type:", guide = "legend", values=c("solid","dashed"), labels=c("Simulation 11", "Average"))
+```
+
+
+## Team Rank Table for Lowest AME
+
+\bsmall
+
+```{r,echo=FALSE}
+Mod.1.AME <- c(26,1,14,23,25,2,22,27,11,3,10,19,16,30,18,8,9,29,20,24,17,12,7,28,21,13,6,15,4,5)
+Mod.3.AME <- c(12,26,17,23,5,15,9,29,18,19,10,2,14,18,14,7,8,30,16,27,13,20,22,6,25,21,1,11,3,4)
+Pyth.AME.Mod <- c(17,26,21,19,4,24,18,22,12,15,13,1,30,25,5,8,7,29,16,20,23,14,27,9,28,11,2,10,6,3)
+Team.Rank <- data.frame(franchID = Franch, "Model 1 AME" = Mod.1.AME, "Model 3 AME" = Mod.3.AME, "Pythagorean AME" = Pyth.AME.Mod)
+Team.Rank.new <- t(Team.Rank[,2:4])
+colnames(Team.Rank.new) <- t(Franch$franchID)
+
+knitr::kable(Team.Rank.new[,1:15], align="ccccccccccccccc", format = 'latex',booktabs=TRUE)%>% kable_styling(latex_options = "scale_down")
+knitr::kable(Team.Rank.new[,16:30], align="ccccccccccccccc", format = 'latex',booktabs=TRUE)%>% kable_styling(latex_options = "scale_down")
+
+```
+
+\esmall
+
+
+## Division Finish Table 
+
+```{r, echo=FALSE}
+divisions <- Teams %>% select(franchID, yearID, divID, Rank,lgID)
+seasons.2000.2016 <- Simulation.Fit.All %>% filter(yearID >= 2000) %>% filter(Sim.Run == 11) %>%
+  transmute(franchID,yearID,'Total Win Percentage' = Total_Win_Per*100,Model.1 =Predict.1*100,Model.8 = Predict.8*100, Pyth = Predict.Pyth*100)
+div.season.outcome <- inner_join(seasons.2000.2016, divisions, by=c("yearID", "franchID"))
+nine11NLW <- div.season.outcome %>% filter(yearID == 2001 & lgID == 'NL' & divID == "W") %>% select(franchID,Rank,'Total Win Percentage', Model.1, Model.8, Pyth)%>% arrange(Rank)
+knitr::kable(nine11NLW, align="cccccc",col.names = c("Team", "Finish", "Total Win Percentage", "Model 1", "Model 3", "Pythagorean") ,caption="Predicted Divison Finish for 2001 NL West",format = 'latex',booktabs=TRUE)%>% kable_styling(latex_options = "scale_down")
+
+
+##Model 1 predicted 2007 AL C correcctly while pyth and model 8 both predicted KCR to be ranked 4th and CHW rank 5th
+o7ALC <- div.season.outcome %>% filter(yearID == 2007 & lgID == 'AL' & divID == "C") %>% select(franchID,Rank,'Total Win Percentage', Model.1, Model.8, Pyth)%>% arrange(Rank)
+
+knitr::kable(o7ALC, align="cccccc",col.names = c("Team", "Finish", "Total Win Percentage", "Model 1", "Model 3", "Pythagorean") ,caption="Predicted Divison Finish for 2007 AL East",format = 'latex',booktabs=TRUE)%>% kable_styling(latex_options = "scale_down")
+ 
+```
+
+
+
+
+
