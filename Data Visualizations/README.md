@@ -2,6 +2,14 @@
 
 
 
+## No Hitters in MLB
+
+The following visualizations use [data](https://github.com/sleiss5/OSU_Projects/blob/main/Data%20Visualizations/Interactive%20And%20Animated%20MLB%20Plots/No%20Hitter.csv) sourced from *Baseball Reference*.
+
+* [Visualizations PDF](https://github.com/sleiss5/OSU_Projects/blob/main/Data%20Visualizations/No%20Hitters%20in%20MLB/MLB%20No%20Hitter%20-%20Shannon%20Leiss.pdf) ([RMD](https://github.com/sleiss5/OSU_Projects/blob/main/Data%20Visualizations/No%20Hitters%20in%20MLB/Data%20Exploration.Rmd)) contains three visualizations that inspect different aspects of the No Hitter data.
+      * The first plot shows that the National League tends to get No Hit more than the American League.
+      * The second plot shows that American League pitchers tend to throw more pitches per No Hitter than National Leaguer pitchers.
+      * The third plot shows that pitchers who are right handed and tend to get outs by contact throw more No Hitters than other types of pitchers.
 
 
 ## Interactive and Animated MLB Plots
