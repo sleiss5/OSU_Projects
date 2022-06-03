@@ -45,3 +45,4 @@ The Logistic model that was found within the above project was used to further i
 * The R code used for the analysis in this project can be found below:
   * [Report Work R](https://github.com/sleiss5/OSU_Projects/blob/main/Playoff%20Likelihood%20MLB/Optimization/Project%20Work.Rmd)
 
+   
