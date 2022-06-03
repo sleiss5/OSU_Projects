@@ -1,0 +1,207 @@
+---
+title: "Assignment 4"
+author: "Shannon Leiss"
+date: "6/1/2021"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(readxl)
+library(tidyverse)
+library(colorspace)
+library(patchwork)
+library(dplyr)
+library(Lahman)
+library(sf)
+library(maps)
+library(plotly)
+library(gganimate)
+library(googleVis)
+
+```
+
+The Baseball Hall of Fame contains 267 players, with 86 of those players being Pitchers. 22 of these pitchers have thrown at least one No Hitter in their careers. 
+
+
+
+```{r, include=FALSE}
+No_Hitter <- read_csv("~/Shannon/sp2021/Assignment 3/Assignment 3 - Shannon Leiss/No HItter.csv")
+head(No_Hitter)
+No_hit <- No_Hitter %>%
+  filter(Year != 2021) %>%
+  mutate(Home = ifelse(is.na(X9), Tm, Opp))%>%
+  select(-c(X9, Rslt))
+No_hit <- No_hit %>%
+  mutate(Perfect = ifelse(is.na(Prfct), 0, 1))%>%
+  select(-Prfct)
+RIGHT = function(x,n){
+  substring(x,nchar(x)-n+1)
+}
+No_hit <- No_hit %>%
+  mutate(Pitches = ifelse(RIGHT(No_hit$Name,1) == "*", "L", "R")) %>%
+  select(-Rk)
+NL <- c("CHC","MIA","WSN","PHI","SFG","LAD","CIN","NYM","ARI","COL", "FLA" ,"STL","ATL", "MON", "MIL", "PIT", "BRO", "BSN", "NYG", "PBS", "BTT", "COR","BUF","PRO","WOR")
+AL <- c("CHW","HOU","OAK","SEA","LAA" ,"DET", "MIN", "TBR", "NYY", "TEX", "KCR", "TOR","CAL", "CLE", "BAL", "MLN","SLB", "PHA", "WSH","SLM","KCP", "CHI","LOU", "BLN", "CLV","ROC", "KCC")
+No_hit <- No_hit %>%
+  mutate(League = ifelse(Tm %in% AL, "AL", "NL")) %>%
+  mutate(OppLeague = ifelse(Opp %in% AL, "AL", "NL"))%>%
+  mutate(ParkLeague = ifelse(Home %in% AL, "AL", "NL"))
+
+No_hit_pitch <- No_hit %>%
+  filter(!is.na(Pit))
+
+No_hit <- No_hit %>%
+  mutate(Name = ifelse(RIGHT(No_hit$Name,1) == "*", substr(No_hit$Name, 1, nchar(No_hit$Name)-1), Name)) 
+
+
+HOF <- HallOfFame[HallOfFame$inducted == "Y",] ##People in Hall Of Fame
+HOF <- HOF[HOF$category == "Player",] ##Only PLayers
+HOF <- HOF[HOF$votedBy == "BBWAA",] ##Only players inducted by the Writers association
+
+HOF <- HOF[order(HOF$playerID),] ##Alphabetical order of name
+players <- HOF$playerID
+Players_in_HOF <- filter(People, playerID %in% players) 
+
+HOF$nameFirst <- Players_in_HOF$nameFirst ## Add players names to HOF data
+HOF$nameLast <- Players_in_HOF$nameLast
+HOF$yrsplayed <-as.numeric(ceiling((as.Date(Players_in_HOF$finalGame)-as.Date(Players_in_HOF$debut))/365)) ## Add number of years played
+HOF$Voteperc <- round(HOF$votes/HOF$ballots*100,2) ## Percentage of votes received induction year
+HOF <- HOF[,-(3:9)] ##Eliminate extra info
+HOF$Country <- Players_in_HOF$birthCountry
+HOF$State <- Players_in_HOF$birthState
+
+HOF$Name <- paste(HOF$nameFirst, HOF$nameLast, sep=" ")
+
+Players_HOF_Bat_Stats <- filter(Batting, playerID %in% players) ##Batting stats for players in HOF
+Pitching_HOF <- filter(Pitching, playerID %in% players) ## Pitching Stats 
+All_the_tries <- filter(HallOfFame, playerID %in% players) ##All the years that players in the HOF were voted on 
+tries <- table(All_the_tries$playerID)
+HOF$tries <- tries
+
+data(Pitching)
+head(Pitching)
+
+Pitch_players <- Pitching$playerID
+Players_Pitch_stats <- filter(People, playerID %in% Pitch_players)
+
+Pitchers_nohit <- unique(No_hit$Name)
+Pitchers_nohit <- t(as.data.frame((Pitchers_nohit)))
+HOF_No_hit_Pitchers <- filter(HOF, Name %in% Pitchers_nohit)
+
+Player_counts <- No_hit %>%
+  count(Name, sort=TRUE)
+
+
+Player_counts <- Player_counts[order(Player_counts$Name),]
+Player_counts <- filter(Player_counts, Name %in% HOF_No_hit_Pitchers$Name)
+
+HOF_No_hit_Pitchers <- HOF_No_hit_Pitchers[order(HOF_No_hit_Pitchers$Name),]
+
+HOF_No_hit_Pitchers$NoHitters <- Player_counts$n
+
+No_Hits_HOF <- filter(No_hit, Name %in% HOF_No_hit_Pitchers$Name)
+##Players must be retired for 5 full season to be considered for the HOF 
+
+No_hit %>% 
+  filter(Year < 2015) %>%
+  filter(Year > 2001)
+
+People$Name <- paste(People$nameFirst, People$nameLast, sep=" ")
+
+recent <- No_hit %>% 
+  filter(Year < 2015) %>%
+  filter(Year > 2001)
+
+recent_nono <- filter(People, Name %in% recent$Name)
+
+recent_nono %>%
+  filter(finalGame < 2015)
+
+No_hit_pitchers_info <- filter(People, Name %in% No_hit$Name)
+
+No_hit_pitchers_info <- No_hit_pitchers_info %>%
+    filter(finalGame < 2015)
+
+(unique(No_hit_pitchers_info$Name))
+##216 players that have thrown no hitters are eligible for the hall of fame. 22 of them were inducted 
+
+HOF_Pitch_stats <- filter(Pitching, playerID %in% HOF_No_hit_Pitchers$playerID)
+HOF_Pitch_stats<- HOF_Pitch_stats[order(HOF_Pitch_stats$playerID),]
+HOF_No_hit_Pitchers <- HOF_No_hit_Pitchers[order(HOF_No_hit_Pitchers$playerID),]
+
+
+##HOF Pitchers who have thrown no hitters/perfect games 
+
+HOF_Pitch_stats <- HOF_Pitch_stats %>%
+  mutate(Name = ifelse(playerID == "blylebe01","Bert Blyleven",
+                       ifelse(playerID == "eckerde01", "Dennis Eckersley",
+                        ifelse(playerID == "fellebo01", "Bob Feller",
+                        ifelse(playerID == "gibsobo01","Bob Gibson",
+                        ifelse(playerID == "hubbeca01", "Carl Hubbell",
+                        ifelse(playerID == "hunteca01", "Catfish Hunter",
+                        ifelse(playerID == "johnsra05", "Randy Johnson",
+                        ifelse(playerID == "johnswa01", "Walter Johnson",
+                        ifelse(playerID == "koufasa01", "Sandy Koufax",
+                        ifelse(playerID == "lemonbo01", "Bob Lemon",
+                        ifelse(playerID == "lyonste01", "Ted Lyons",
+                        ifelse(playerID == "maricju01", "Juan Marichal",
+                        ifelse(playerID == "mathech01", "Christy Mathewson",
+                        ifelse(playerID == "niekrph01", "Phil Niekro",
+                        ifelse(playerID == "palmeji01", "Jim Palmer",
+                        ifelse(playerID == "perryga01", "Gaylord Perry",
+                        ifelse(playerID == "ryanno01", "Nolan Ryan",
+                        ifelse(playerID == "seaveto01", "Tom Seaver",
+                        ifelse(playerID == "spahnwa01", "Warren Spahn",
+                        ifelse(playerID == "vanceda01", "Dazzy Vance",
+                        ifelse(playerID == "wilheho01", "Hoyt Wilhelm", "Cy Young"))))))))))))))))))))))
+
+HOF_Pitch_stats <- HOF_Pitch_stats %>%
+  mutate(NoHitters = ifelse(playerID == "blylebe01",1,
+                       ifelse(playerID == "eckerde01", 1,
+                        ifelse(playerID == "fellebo01", 3,
+                        ifelse(playerID == "gibsobo01",1,
+                        ifelse(playerID == "hubbeca01", 1,
+                        ifelse(playerID == "hunteca01", 1,
+                        ifelse(playerID == "johnsra05", 2,
+                        ifelse(playerID == "johnswa01", 1,
+                        ifelse(playerID == "koufasa01", 4,
+                        ifelse(playerID == "lemonbo01", 1,
+                        ifelse(playerID == "lyonste01", 1,
+                        ifelse(playerID == "maricju01", 1,
+                        ifelse(playerID == "mathech01", 2,
+                        ifelse(playerID == "niekrph01", 1,
+                        ifelse(playerID == "palmeji01", 1,
+                        ifelse(playerID == "perryga01", 1,
+                        ifelse(playerID == "ryanno01", 7,
+                        ifelse(playerID == "seaveto01", 1,
+                        ifelse(playerID == "spahnwa01", 2,
+                        ifelse(playerID == "vanceda01", 1,
+                        ifelse(playerID == "wilheho01", 1, 3))))))))))))))))))))))
+
+HOF_Pitch_stats <- HOF_Pitch_stats %>%
+  pivot_longer(W:L, names_to = "Type", values_to = "Record")%>%
+  mutate(Season = yearID)
+```
+
+
+
+```{r, echo=FALSE, fig.width=15,fig.height=5}
+
+HOF_Pitch_stats <- HOF_Pitch_stats[order(HOF_Pitch_stats$Season),]
+
+p1 <- HOF_Pitch_stats %>%
+  mutate(Type = ifelse(Type == "W", "Wins", "Losses"))%>%
+  ggplot(aes(x=Season, y=Record,frame=Name))+
+  geom_jitter(aes(fill=Type, color=Type, shape=Type))+
+  scale_fill_manual(values=c("red", "green"))+
+  scale_color_manual(values=c("red", "green"))+
+  theme_bw()
+fig <- ggplotly(p1, tooltip = c("y", "x","NoHitters")) %>%
+  layout(title = list(text = paste0("Baseball Hall of Fame Pitchers Win and Loss Records per Season", '<br>', '<sup>', "Includes Pitchers that pitched at least one No Hitter", '</sup>' )), xaxis = list(title=" "), yaxis=list(title="Games"), hovermode = "x unified") %>%
+  animation_opts(frame=1000, transition = 200, redraw=FALSE)%>%
+  animation_slider(currentvalue = list(prefix = "Pitcher: ", font=list(color="black")))
+fig
+```
