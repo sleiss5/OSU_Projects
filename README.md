@@ -17,3 +17,6 @@ This [project](https://github.com/sleiss5/OSU_Projects/tree/main/Distinguishing%
 
 This [folder](https://github.com/sleiss5/OSU_Projects/tree/main/Data%20Visualizations) consists of different data visualizations created for a variety of datasets.
 
+## Greek Life Participation by High School Athletes
+
+This [project](https://github.com/sleiss5/OSU_Projects/tree/main/Greek%20Life%20Participation%20by%20Athletes) looks into traits of incoming undergraduate students at American Universities to see if there specific types of students are more likely to join Greek Life.
