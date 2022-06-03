@@ -1,0 +1,66 @@
+---
+title: "Interaction Plot - No Hitters"
+author: "Shannon Leiss"
+date: "5/25/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(plotly)
+library(gganimate)
+library(googleVis)
+library(tidyverse)
+library(readxl)
+No_Hitter <- read_csv("~/OSU/Sp2021/ST 537 - Data Viz/Week 9/No Hitter.csv")
+head(No_Hitter)
+No_hit <- No_Hitter %>%
+  filter(Year != 2021) %>%
+  mutate(Home = ifelse(is.na(X9), Tm, Opp))%>%
+  select(-c(X9, Rslt))
+No_hit <- No_hit %>%
+  mutate(Perfect = ifelse(is.na(Prfct), 0, 1))%>%
+  select(-Prfct)
+RIGHT = function(x,n){
+  substring(x,nchar(x)-n+1)
+}
+No_hit <- No_hit %>%
+  mutate(Pitches = ifelse(RIGHT(No_hit$Name,1) == "*", "L", "R")) %>%
+  select(-Rk) 
+NL <- c("CHC","MIA","WSN","PHI","SFG","LAD","CIN","NYM","ARI","COL", "FLA" ,"STL","ATL", "MON", "MIL", "PIT", "BRO", "BSN", "NYG", "PBS", "BTT", "COR","BUF","PRO","WOR")
+AL <- c("CHW","HOU","OAK","SEA","LAA" ,"DET", "MIN", "TBR", "NYY", "TEX", "KCR", "TOR","CAL", "CLE", "BAL", "MLN","SLB", "PHA", "WSH","SLM","KCP", "CHI","LOU", "BLN", "CLV","ROC", "KCC")
+No_hit <- No_hit %>%
+  mutate(League = ifelse(Tm %in% AL, "AL", "NL")) %>%
+  mutate(OppLeague = ifelse(Opp %in% AL, "AL", "NL"))%>%
+  mutate(ParkLeague = ifelse(Home %in% AL, "AL", "NL"))
+
+No_hit_pitch <- No_hit %>%
+  filter(!is.na(Pit))
+
+```
+
+## Interactive Strike out Plot
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+p <- No_hit %>%
+  filter(!is.na(SO))%>%
+  ggplot(aes(SO, BB))+
+  geom_jitter(aes(text=paste(Name), color=League, shape=Pitches))+
+  scale_color_manual(values = c("red", "blue"))+
+  ggtitle("All No Hitters Pitched in MLB History")+
+  ylab("Bases on Balls Per Game")+
+  xlab("Strike Outs Per Game")
+hide_legend(ggplotly(p)) %>%
+  layout(title = list(text = paste0("All No Hitters Pitched in MLB History", '<br>', '<sup>', "Includes No Hitters with available pitching data, 249 out 293 No Hitters are displayed", '</sup>' )))
+
+p1 <- No_hit %>%
+  filter(!is.na(SO))%>%
+  ggplot(aes(SO, BB, frame=Year))+
+  geom_point(aes(text=paste(Name), size=Perfect))
+fig <- ggplotly(p1) %>%
+  layout(title = "No Hitters", xaxis = list(title="Strike Outs Per Game"), yaxis=list(title="Walks Per Game")) %>%
+  animation_opts(frame=100, transition = 2, redraw=FALSE)%>%
+  animation_slider(currentvalue = list(prefix = "Season "))
+fig
+
+```
